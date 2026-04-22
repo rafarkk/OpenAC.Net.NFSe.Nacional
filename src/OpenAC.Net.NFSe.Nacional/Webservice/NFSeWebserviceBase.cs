@@ -4,7 +4,7 @@ using OpenAC.Net.DFe.Core.Extensions;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
-using OpenAC.Net.NFSe.Nacional.Indexador;
+using OpenAC.Net.NFSe.Nacional.Indexador.Model;
 using System;
 using System.IO;
 using System.Net.Http;

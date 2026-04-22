@@ -44,6 +44,7 @@ using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
 using OpenAC.Net.NFSe.Nacional.Indexador;
+using OpenAC.Net.NFSe.Nacional.Indexador.Model;
 namespace OpenAC.Net.NFSe.Nacional.Webservice.Nacional;
 
 /// <summary>

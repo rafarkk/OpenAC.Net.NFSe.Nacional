@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenAC.Net.NFSe.Nacional.Indexador
+namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
 {
     /// <summary>
     /// Representa o registro de um documento eletrônico (XML, JSON, etc.) no índice de localização.

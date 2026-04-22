@@ -3,6 +3,7 @@ using OpenAC.Net.Core.Logging;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
 using OpenAC.Net.NFSe.Nacional.Indexador;
+using OpenAC.Net.NFSe.Nacional.Indexador.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;

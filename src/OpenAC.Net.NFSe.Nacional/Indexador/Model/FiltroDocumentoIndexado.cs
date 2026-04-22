@@ -5,8 +5,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenAC.Net.NFSe.Nacional.Indexador
+namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
 {
+    public enum EstruturaZip
+    {
+        /// <summary>
+        /// Todos os arquivos soltos na raiz do ZIP, sem subpastas.
+        /// </summary>
+        Plana = 0,
+
+        /// <summary>
+        /// Arquivos organizados em pastas por prestador e tipo (prestador/NFSe ou prestador/Rps).
+        /// </summary>
+        PorPrestadorETipo = 1
+    }
+
     /// <summary>
     /// Parâmetros de busca para localização de documentos indexados.
     /// </summary>
