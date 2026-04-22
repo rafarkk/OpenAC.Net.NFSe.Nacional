@@ -29,6 +29,7 @@
 // <summary></summary>
 // ***********************************************************************
 
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -42,6 +43,7 @@ using OpenAC.Net.DFe.Core.Extensions;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
+using OpenAC.Net.NFSe.Nacional.Indexador;
 namespace OpenAC.Net.NFSe.Nacional.Webservice.Nacional;
 
 /// <summary>

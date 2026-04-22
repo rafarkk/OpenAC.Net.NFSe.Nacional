@@ -270,7 +270,7 @@ public abstract class NFSeWebserviceBase : IOpenLog
             return (caminhoFinal, null);
 
         //arquivoIndex.CaminhoRelativo = diretorio;
-        docIndexado.CaminhoRelativo = DFeExtensions.GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorio);
+        docIndexado.CaminhoRelativo = GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorio);
         return (caminhoFinal, IndexadorDocs.Indexar(docIndexado)?.Id);
     }
 
@@ -313,6 +313,20 @@ public abstract class NFSeWebserviceBase : IOpenLog
         while (File.Exists(caminho));
 
         return caminho;
+    }
+
+    private static string GetRelativePath(string relativeTo, string path)
+    {
+        var root = relativeTo.EndsWith(Path.DirectorySeparatorChar.ToString())
+                   ? relativeTo : relativeTo + Path.DirectorySeparatorChar;
+
+        Uri rootUri = new Uri(root);
+        Uri fullUri = new Uri(path);
+
+        Uri relativeUri = rootUri.MakeRelativeUri(fullUri);
+
+        return Uri.UnescapeDataString(relativeUri.ToString())
+                  .Replace('/', Path.DirectorySeparatorChar);
     }
 
     #endregion Methods

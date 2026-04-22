@@ -56,7 +56,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
             PathNFSe = Path.Combine(path, "NFSe");
             PathEnvio = Path.Combine(path, "Envio");
             PathDps = Path.Combine(path, "DPS");
-            //PathDocIndexDb = Path.Combine(path, "DB");
+            PathIndexadorDocsDb = Path.Combine(path, "Data");
         }
         else
         {
@@ -65,6 +65,8 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
             PathDps = string.Empty;
             PathIndexadorDocsDb = string.Empty;
         }
+
+        IndexarDocumentosSalvos = false;
     }
 
     #endregion Constructors
@@ -94,6 +96,13 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
     /// </summary>
     /// <value>O caminho para o arquivo de banco de dados.</value>
     public string PathIndexadorDocsDb { get; set; }
+
+    /// <summary>
+    /// Define/retorna de deve manter um índice em SQLite dos arquivos XML salvos em disco.
+    /// Quando habilitado (true), será criado/atualizado um banco SQLite para armazenar e indexar os documentos,
+    /// facilitando consultas e organização dos arquivos.
+    /// </summary>
+    public bool IndexarDocumentosSalvos { get; set; }
 
     /// <summary>
     /// Obtém ou define a Versão do Schema.
