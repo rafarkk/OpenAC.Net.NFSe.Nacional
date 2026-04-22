@@ -29,6 +29,8 @@
 // <summary></summary>
 // ***********************************************************************
 
+using OpenAC.Net.NFSe.Nacional.Common.Types;
+
 namespace OpenAC.Net.NFSe.Nacional.Common.Model;
 
 /// <summary>
@@ -40,4 +42,10 @@ public interface IEventoNFSe
     /// Descrição do evento.
     /// </summary>
     string Descricao { get; set; }
+
+    /// <summary>
+    /// Tipo do evento.
+    /// </summary>
+    TipoEvento TipoEvento { get; }
+
 }

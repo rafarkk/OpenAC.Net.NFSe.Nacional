@@ -56,12 +56,14 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
             PathNFSe = Path.Combine(path, "NFSe");
             PathEnvio = Path.Combine(path, "Envio");
             PathDps = Path.Combine(path, "DPS");
+            //PathDocIndexDb = Path.Combine(path, "DB");
         }
         else
         {
             PathNFSe = string.Empty;
             PathEnvio = string.Empty;
             PathDps = string.Empty;
+            PathIndexadorDocsDb = string.Empty;
         }
     }
 
@@ -86,6 +88,12 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
     /// </summary>
     /// <value>O caminho para arquivos DPS.</value>
     public string PathDps { get; set; }
+
+    /// <summary>
+    /// Obtém ou define o caminho para o arquivo de banco de dados que guarda a indexação dos documentos salvos.
+    /// </summary>
+    /// <value>O caminho para o arquivo de banco de dados.</value>
+    public string PathIndexadorDocsDb { get; set; }
 
     /// <summary>
     /// Obtém ou define a Versão do Schema.

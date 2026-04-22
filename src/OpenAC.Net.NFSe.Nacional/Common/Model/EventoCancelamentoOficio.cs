@@ -31,6 +31,7 @@
 
 using OpenAC.Net.DFe.Core.Attributes;
 using OpenAC.Net.DFe.Core.Serializer;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
 
 namespace OpenAC.Net.NFSe.Nacional.Common.Model;
 
@@ -62,4 +63,10 @@ public sealed class EventoCancelamentoOficio : IEventoNFSe
     /// </summary>
     [DFeElement(TipoCampo.Str, "xProcAdm", Min = 15, Max = 255, Ocorrencia = Ocorrencia.Obrigatoria)]
     public string DescricaoProcessoAdm { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Identifica o tipo do evento atual com base na implementação da instância.
+    /// </summary>
+    /// <returns>O <see cref="TipoEvento"/> correspondente ou <c>null</c> caso o evento não esteja definido.</returns>
+    public TipoEvento TipoEvento => TipoEvento.CANCELAMENTO_POR_OFICIO;
 }

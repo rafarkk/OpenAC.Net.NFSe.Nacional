@@ -51,7 +51,19 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// </summary>
     public ConfiguracaoNFSe Configuracoes { get; } = new();
 
+    /// <summary>
+    /// Instância do serviço de índice utilizada para catalogar os arquivos gerados e resolver seus caminhos físicos de armazenamento.
+    /// </summary>
+    public IndexadorDocumentosService IndexadorDocs { get; }
+
     #endregion Properties
+
+    #region Constructors
+    public OpenNFSeNacional()
+    {
+        IndexadorDocs = new IndexadorDocumentosService(Configuracoes.Arquivos);
+    }
+    #endregion Constructors
 
     #region Methods
 
@@ -62,7 +74,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Resposta do envio contendo informações da NFS-e gerada.</returns>
     public Task<NFSeResponse<RespostaEnvioDps>> EnviarAsync(Dps dps)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -88,7 +100,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Resposta do envio do evento.</returns>
     public Task<NFSeResponse<RespostaEnvioEvento>> EnviarEventoAsync(PedidoRegistroEvento evento)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -114,7 +126,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Dados da consulta dos DF-e.</returns>
     public Task<NFSeResponse<RespostaConsultaDFe>> ConsultaNsuAsync(int nsu)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -140,7 +152,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Dados da consulta dos DF-e.</returns>
     public Task<NFSeResponse<RespostaConsultaDFe>> ConsultaChaveAsync(string chave)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -166,7 +178,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Array de bytes contendo o DANFSe.</returns>
     public Task<byte[]> DownloadDANFSeAsync(string chave)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -192,7 +204,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>Dados da consulta da chave de acesso.</returns>
     public Task<NFSeResponse<RespostaConsultaChaveDps>> ConsultaChaveDpsAsync(string id)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try
@@ -218,7 +230,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <returns>True se a NFS-e existe, caso contrário, false.</returns>
     public Task<bool> ConsultaExisteDpsAsync(string id)
     {
-        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes);
+        var provider = NFSeServiceManager.Instance.GetProvider(Configuracoes, IndexadorDocs);
         var oldProtocol = ServicePointManager.SecurityProtocol;
         
         try

@@ -50,8 +50,8 @@ public class SimplISSWebservice : NacionalWebservice
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    public SimplISSWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo) : 
-        base(configuracaoNFSe, serviceInfo)
+    public SimplISSWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indexadorDocs) : 
+        base(configuracaoNFSe, serviceInfo, indexadorDocs)
     {
     }
 

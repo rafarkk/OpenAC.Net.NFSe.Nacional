@@ -57,4 +57,10 @@ public sealed class EventoSolicitacaoCancelamento : IEventoNFSe
     /// </summary>
     [DFeElement(TipoCampo.Str, "xMotivo", Min = 15, Max = 255, Ocorrencia = Ocorrencia.Obrigatoria)]
     public string Motivo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Identifica o tipo do evento atual com base na implementação da instância.
+    /// </summary>
+    /// <returns>O <see cref="TipoEvento"/> correspondente ou <c>null</c> caso o evento não esteja definido.</returns>
+    public TipoEvento TipoEvento => TipoEvento.SOLICITACAO_CANCELAMENTO_ANALISE_FISCAL;
 }

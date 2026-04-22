@@ -45,4 +45,10 @@ public sealed class EventoRejeicaoTomador : InfoRejeicao, IEventoNFSe
     /// </summary>
     [DFeElement(TipoCampo.Str, "xDesc", Ocorrencia = Ocorrencia.Obrigatoria, Ordem = 0)]
     public string Descricao { get; set; } = "Manifestação de NFS-e - Rejeição do Tomador";
+
+    /// <summary>
+    /// Identifica o tipo do evento atual com base na implementação da instância.
+    /// </summary>
+    /// <returns>O <see cref="TipoEvento"/> correspondente ou <c>null</c> caso o evento não esteja definido.</returns>
+    public TipoEvento TipoEvento => TipoEvento.REJEICAO_TOMADOR;
 }

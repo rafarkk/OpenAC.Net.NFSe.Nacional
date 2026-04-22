@@ -12,7 +12,7 @@
         <Authors>Projeto OpenAC .Net</Authors>
         <PackageProjectUrl>https://openac.net.br/</PackageProjectUrl>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
         <PackageIcon>nuget.png</PackageIcon>
         <RepositoryUrl>https://github.com/OpenAC-Net/OpenAC.Net.NFSe.Nacional</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
@@ -20,9 +20,9 @@
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <NeutralLanguage>pt-BR</NeutralLanguage>
-        <AssemblyVersion>1.4.4.0</AssemblyVersion>
-        <FileVersion>1.4.4.0</FileVersion>
-        <Version>1.4.4</Version>
+		<AssemblyVersion>1.4.4.0</AssemblyVersion>
+		<FileVersion>1.4.4.0</FileVersion>
+		<Version>1.4.4</Version>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
         <DebugType>embedded</DebugType>
@@ -60,12 +60,14 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.25" />
+		<PackageReference Include="System.IO.Compression" Version="4.3.0" />
         <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="OpenAC.Net.Core" Version="1.6.0" />
-        <PackageReference Include="OpenAC.Net.DFe.Core" Version="1.6.0.2" />
+        <!--<PackageReference Include="OpenAC.Net.DFe.Core" Version="1.6.0.2" />-->
         <PackageReference Include="System.Net.Http.Json" Version="10.0.1" />
     </ItemGroup>    
 
@@ -105,6 +107,10 @@
 
     <ItemGroup>
       <EmbeddedResource Include="Resources\Municipios.nfse" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\OpenAC.Net.DFe.Core\src\OpenAC.Net.DFe.Core\OpenAC.Net.DFe.Core.csproj" />
     </ItemGroup>
 
 </Project>

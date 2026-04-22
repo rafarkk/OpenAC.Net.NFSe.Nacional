@@ -29,6 +29,13 @@
 // <summary></summary>
 // ***********************************************************************
 
+using OpenAC.Net.Core.Logging;
+using OpenAC.Net.DFe.Core.Extensions;
+using OpenAC.Net.NFSe.Nacional.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
+using OpenAC.Net.NFSe.Nacional.Indexador;
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -36,11 +43,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using OpenAC.Net.Core.Logging;
-using OpenAC.Net.DFe.Core.Extensions;
-using OpenAC.Net.NFSe.Nacional.Common;
-using OpenAC.Net.NFSe.Nacional.Common.Model;
-using OpenAC.Net.NFSe.Nacional.Common.Types;
 namespace OpenAC.Net.NFSe.Nacional.Webservice.Nacional;
 
 /// <summary>
@@ -55,8 +57,8 @@ public class NacionalWebservice : NFSeWebserviceBase
     /// </summary>
     /// <param name="configuracaoNFSe">Configuração da NFSe.</param>
     /// <param name="serviceInfo">Informações do serviço</param>
-    public NacionalWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo) :
-        base(configuracaoNFSe, serviceInfo)
+    public NacionalWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indexadorDocs) :
+        base(configuracaoNFSe, serviceInfo, indexadorDocs)
     {
     }
 
@@ -193,31 +195,6 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         var documento = evento.Informacoes.CPFAutor ?? evento.Informacoes.CNPJAutor;
 
-        //var prefixoNomeArquivo = evento.Informacoes.ChNFSe;
-
-        //if (!Configuracao.Arquivos.PadronizarNomes)
-        //{
-        //    try
-        //    {
-        //        var consulta = await ConsultaChaveAsync(evento.Informacoes.ChNFSe);
-        //        var nfse = consulta.Resultado.Lote.FirstOrDefault(x => x.TipoDocumento == TipoDocumento.NFSE);
-
-        //        if (!string.IsNullOrWhiteSpace(nfse?.ArquivoXml))
-        //        {
-        //            var numeroDoc = XDocument.Parse(nfse?.ArquivoXml)
-        //                .Descendants()
-        //                .FirstOrDefault(x => x.Name.LocalName == "nDPS")
-        //                ?.Value.FillZeros();
-
-        //            prefixoNomeArquivo = $"{numeroDoc}{evento.Informacoes.Evento}";
-        //        }
-        //    }
-        //    catch (System.Exception)
-        //    {
-
-        //    }
-        //}
-
         var prefixoNomeArquivoDps = Configuracao.Arquivos.PadronizarNomes
             ? evento.Informacoes.Id
             : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
@@ -258,15 +235,38 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         if (retorno.Sucesso)
         {
-            var prefixoNomeArquivoEventoNfse = Configuracao.Arquivos.PadronizarNomes
-                ? evento.Informacoes.ChNFSe
-                : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
+            try
+            {
+                var prefixoNomeArquivoEventoNfse = Configuracao.Arquivos.PadronizarNomes
+                    ? evento.Informacoes.ChNFSe
+                    : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
 
-            var nSeqEvento = XDocument.Parse(retorno.Resultado.XmlEvento)
-                .Descendants()
-                .FirstOrDefault(x => x.Name.LocalName == "nSeqEvento")?.Value ?? "00";
+                var nSeqEvento = XDocument.Parse(retorno.Resultado.XmlEvento)
+                    .Descendants()
+                    .FirstOrDefault(x => x.Name.LocalName == "nSeqEvento")?.Value ?? "00";
 
-            GravarNFSeEmDisco(retorno.Resultado.XmlEvento, $"{prefixoNomeArquivoEventoNfse}_evento_{nSeqEvento}.xml", documento, evento.Informacoes.DhEvento.DateTime, true);
+                var nomeArquivoEvento = $"{prefixoNomeArquivoEventoNfse}_evento_{nSeqEvento}.xml";
+
+                var docIndexado = new DocumentoIndexado
+                {
+                    CriadoEm = DateTime.Now,
+                    DocumentoPrestador = documento,
+                    ChaveReferencia = evento.Informacoes.ChNFSe,
+                    NomeArquivo = nomeArquivoEvento,
+                    DataDocumento = evento.Informacoes.DhEvento.DateTime,
+                    TipoDocumentoFiscal = TipoDocumento.EVENTO,
+                    TipoEvento = evento.Informacoes.Evento.TipoEvento,
+                    NumeroSequencial = int.TryParse(nSeqEvento, out var numero)
+                        ? numero
+                        : (int?)null
+                };
+
+                GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEvento, documento, evento.Informacoes.DhEvento.DateTime, true, docIndexado);
+            }
+            catch (Exception)
+            {
+                this.Log().Warn($"Webservice: [Evento] - Erro ao salvar arquivo em disco.");
+            }
         }
 
         return retorno;
@@ -276,7 +276,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
     #region NFS-e
 
-    /// <summary>
+            /// <summary>
     /// Recepciona a DPS e gera a NFS-e de forma síncrona.
     /// </summary>
     /// <param name="dps">DPS a ser enviada.</param>
@@ -293,8 +293,18 @@ public class NacionalWebservice : NFSeWebserviceBase
             ? dps.Informacoes.Id
             : dps.Informacoes.NumeroDps.FillZeros();
 
-        GravarDpsEmDisco(dps.Xml, $"{prefixoNomeArquivoDps}_dps.xml",
-            documento, dps.Informacoes.DhEmissao.DateTime);
+        var nomeArquivoDps = $"{prefixoNomeArquivoDps}_dps.xml";
+        var docIndexado = new DocumentoIndexado
+        {
+            CriadoEm = DateTime.Now,
+            DocumentoPrestador = documento,
+            ChaveReferencia = dps.Informacoes.Id,
+            NomeArquivo = nomeArquivoDps,
+            DataDocumento = dps.Informacoes.DhEmissao.DateTime,
+            TipoDocumentoFiscal = TipoDocumento.DPS,
+        };
+
+        var (caminhoDps, idDocIndexado) = GravarDpsEmDisco(dps.Xml, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime, docIndexado: docIndexado);
 
         var envio = new DpsEnvio
         {
@@ -321,11 +331,45 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         if (retorno.Sucesso)
         {
-            var prefixoNomeArquivoNfse = Configuracao.Arquivos.PadronizarNomes
-            ? retorno?.Resultado?.ChaveAcesso
-            : dps.Informacoes.NumeroDps.FillZeros();
+            try
+            {
+                var chaveAcesso = retorno.Resultado?.ChaveAcesso;
 
-            GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, $"{prefixoNomeArquivoNfse}_nfse.xml", documento, dps.Informacoes.DhEmissao.DateTime);
+                if (idDocIndexado.HasValue)
+                {
+                    var docAtualizado = IndexadorDocs.AtualizarCampo(idDocIndexado.Value, "chave_referencia", chaveAcesso);
+
+                    if (Configuracao.Arquivos.IndexarDocumentosSalvos && docAtualizado == null)
+                    {
+                        this.Log().Warn($"Webservice: [DANFSe] - Erro ao atualizar campo de arquivo em disco.");
+                    }
+                }
+
+                var nomeArquivoNfse = $"{(Configuracao.Arquivos.PadronizarNomes
+                    ? retorno?.Resultado?.ChaveAcesso
+                    : dps.Informacoes.NumeroDps.FillZeros())}_nfse.xml";
+
+                var docNfseIndexado = new DocumentoIndexado
+                {
+                    CriadoEm = DateTime.Now,
+                    DocumentoPrestador = documento,
+                    ChaveReferencia = chaveAcesso,
+                    NomeArquivo = nomeArquivoNfse,
+                    DataDocumento = dps.Informacoes.DhEmissao.DateTime,
+                    TipoDocumentoFiscal = TipoDocumento.NFSE,
+                };
+
+
+                GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, nomeArquivoNfse, documento, dps.Informacoes.DhEmissao.DateTime, docIndexado: docNfseIndexado);
+            }
+            catch (Exception)
+            {
+                this.Log().Warn($"Webservice: [DANFSe] - Erro ao salvar arquivo em disco.");
+            }
+        }
+        else
+        {
+            if (idDocIndexado.HasValue) IndexadorDocs.Remover(idDocIndexado.Value);
         }
 
         return retorno;

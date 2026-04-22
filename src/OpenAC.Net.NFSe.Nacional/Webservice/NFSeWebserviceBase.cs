@@ -1,3 +1,10 @@
+using OpenAC.Net.Core.Logging;
+using OpenAC.Net.DFe.Core;
+using OpenAC.Net.DFe.Core.Extensions;
+using OpenAC.Net.NFSe.Nacional.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
+using OpenAC.Net.NFSe.Nacional.Indexador;
 using System;
 using System.IO;
 using System.Net.Http;
@@ -6,11 +13,6 @@ using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Schema;
-using OpenAC.Net.Core.Logging;
-using OpenAC.Net.DFe.Core;
-using OpenAC.Net.NFSe.Nacional.Common;
-using OpenAC.Net.NFSe.Nacional.Common.Model;
-using OpenAC.Net.NFSe.Nacional.Common.Types;
 
 namespace OpenAC.Net.NFSe.Nacional.Webservice;
 
@@ -52,10 +54,12 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// </summary>
     /// <param name="configuracaoNFSe">Configuração da NFSe.</param>
     /// <param name="serviceInfo"></param>
-    protected NFSeWebserviceBase(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo)
+    /// <param name="indexadorDocs">Serviço responsável por indexar e localizar os documentos no sistema de arquivos.</param>
+    protected NFSeWebserviceBase(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indexadorDocs)
     {
         Configuracao = configuracaoNFSe;
         ServiceInfo = serviceInfo;
+        IndexadorDocs = indexadorDocs;
     }
 
     #endregion Constructors
@@ -71,6 +75,12 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// Informações do serviço (endpoints, timeout e metadados) utilizadas pelo webservice.
     /// </summary>
     public NFSeServiceInfo ServiceInfo { get; }
+
+    /// <summary>
+    /// Instância do serviço de índice utilizada para catalogar os arquivos gerados e resolver seus caminhos físicos de armazenamento.
+    /// </summary>
+    protected IndexadorDocumentosService IndexadorDocs { get; }
+
 
     #endregion Properties
 
@@ -184,11 +194,13 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// <param name="nomeArquivo">Nome do arquivo.</param>
     /// <param name="documento">Documento do prestador.</param>
     /// <param name="data">Data de emissão.</param>
-    protected virtual void GravarDpsEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false)
+    /// <param name="incrementarNome">Indica se o nome do arquivo deve ser incrementado caso já exista.</param>
+    /// <param name="docIndexado">Representa o registo de um documento eletrónico no índice de localização.</param>
+    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarDpsEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, DocumentoIndexado docIndexado = null)
     {
-        if (Configuracao.Arquivos.Salvar == false) return;
+        if (Configuracao.Arquivos.Salvar == false) return (null, null);
 
-        GravarArquivoEmDisco(TipoArquivo.Rps, conteudoArquivo, nomeArquivo, documento, data, incrementarNome);
+        return GravarArquivoEmDisco(TipoArquivo.Rps, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, docIndexado);
     }
 
     /// <summary>
@@ -198,11 +210,13 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// <param name="nomeArquivo">Nome do arquivo.</param>
     /// <param name="documento">Documento do prestador.</param>
     /// <param name="data">Data de emissão.</param>
-    protected virtual void GravarNFSeEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false)
+    /// <param name="incrementarNome">Indica se o nome do arquivo deve ser incrementado caso já exista.</param>
+    /// <param name="docIndexado">Representa o registo de um documento eletrónico no índice de localização.</param>
+    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarNFSeEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, DocumentoIndexado docIndexado = null)
     {
-        if (Configuracao.Arquivos.Salvar == false) return;
+        if (Configuracao.Arquivos.Salvar == false) return (null, null);
 
-        GravarArquivoEmDisco(TipoArquivo.NFSe, conteudoArquivo, nomeArquivo, documento, data, incrementarNome);
+        return GravarArquivoEmDisco(TipoArquivo.NFSe, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, docIndexado);
     }
 
     /// <summary>
@@ -230,7 +244,15 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// Indica se o nome do arquivo deve ser incrementado caso já exista,
     /// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
     /// </param>
-    protected virtual void GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false)
+    /// <param name="docIndexado">Representa o registo de um documento eletrónico no índice de localização.</param>
+    /// <returns>
+    /// Uma tupla contendo:
+    /// <list type="bullet">
+    /// <item><description><c>caminhoCompleto</c>: O caminho físico final onde o arquivo foi salvo no disco.</description></item>
+    /// <item><description><c>documentoIndexadoId</c>: O ID do registro no banco de dados (gerado ou atualizado), ou <c>null</c> caso a indexação não tenha ocorrido.</description></item>
+    /// </list>
+    /// </returns>
+    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false, DocumentoIndexado docIndexado = null)
     {
         var diretorio = tipo switch
         {
@@ -243,6 +265,28 @@ public abstract class NFSeWebserviceBase : IOpenLog
         var caminhoFinal = !incrementarNome ? GerarPathUnico(diretorio, nomeArquivo) : Path.Combine(diretorio, nomeArquivo);
 
         File.WriteAllText(caminhoFinal, conteudoArquivo, Encoding.UTF8);
+
+        if (!Configuracao.Arquivos.IndexarDocumentosSalvos || docIndexado == null || tipo is not (TipoArquivo.NFSe or TipoArquivo.Rps))
+            return (caminhoFinal, null);
+
+        //arquivoIndex.CaminhoRelativo = diretorio;
+        docIndexado.CaminhoRelativo = DFeExtensions.GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorio);
+        return (caminhoFinal, IndexadorDocs.Indexar(docIndexado)?.Id);
+    }
+
+    protected virtual string ObterCaminhoArquivo(TipoArquivo tipo, string nomeArquivo, DateTime? data = null, string? documento = null, bool incrementarNome = false)
+    {
+        var diretorio = tipo switch
+        {
+            TipoArquivo.Webservice => Configuracao.Arquivos.GetPathEnvio(data ?? DateTime.Today, documento ?? string.Empty),
+            TipoArquivo.Rps => Configuracao.Arquivos.GetPathDps(data ?? DateTime.Today, documento ?? string.Empty),
+            TipoArquivo.NFSe => Configuracao.Arquivos.GetPathNFSe(data ?? DateTime.Today, documento ?? string.Empty),
+            _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, "Tipo de arquivo não suportado.")
+        };
+
+        return !incrementarNome
+            ? GerarPathUnico(diretorio, nomeArquivo)
+            : Path.Combine(diretorio, nomeArquivo);
     }
 
     /// <summary>
