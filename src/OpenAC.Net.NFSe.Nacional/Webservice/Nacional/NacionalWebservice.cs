@@ -29,13 +29,6 @@
 // <summary></summary>
 // ***********************************************************************
 
-using OpenAC.Net.Core.Logging;
-using OpenAC.Net.DFe.Core.Extensions;
-using OpenAC.Net.NFSe.Nacional.Common;
-using OpenAC.Net.NFSe.Nacional.Common.Model;
-using OpenAC.Net.NFSe.Nacional.Common.Types;
-using OpenAC.Net.NFSe.Nacional.Indexador;
-using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -43,6 +36,12 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using OpenAC.Net.Core.Extensions;
+using OpenAC.Net.Core.Logging;
+using OpenAC.Net.DFe.Core.Extensions;
+using OpenAC.Net.NFSe.Nacional.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
 namespace OpenAC.Net.NFSe.Nacional.Webservice.Nacional;
 
 /// <summary>
@@ -276,7 +275,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
     #region NFS-e
 
-            /// <summary>
+    /// <summary>
     /// Recepciona a DPS e gera a NFS-e de forma síncrona.
     /// </summary>
     /// <param name="dps">DPS a ser enviada.</param>
@@ -291,7 +290,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         var prefixoNomeArquivoDps = Configuracao.Arquivos.PadronizarNomes
             ? dps.Informacoes.Id
-            : dps.Informacoes.NumeroDps.FillZeros();
+            : dps.Informacoes.NumeroDps.ZeroFill(6);
 
         var nomeArquivoDps = $"{prefixoNomeArquivoDps}_dps.xml";
         var docIndexado = new DocumentoIndexado
@@ -347,7 +346,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
                 var nomeArquivoNfse = $"{(Configuracao.Arquivos.PadronizarNomes
                     ? retorno?.Resultado?.ChaveAcesso
-                    : dps.Informacoes.NumeroDps.FillZeros())}_nfse.xml";
+                    : dps.Informacoes.NumeroDps.ZeroFill(6))}_nfse.xml";
 
                 var docNfseIndexado = new DocumentoIndexado
                 {
