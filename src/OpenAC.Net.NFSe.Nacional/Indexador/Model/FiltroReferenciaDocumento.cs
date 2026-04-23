@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
 {
+    /// <summary>
+    /// Define como os arquivos serão organizados dentro do arquivo ZIP gerado na exportação de documentos.
+    /// </summary>
     public enum EstruturaZip
     {
         /// <summary>
@@ -23,7 +26,7 @@ namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
     /// <summary>
     /// Parâmetros de busca para localização de documentos indexados.
     /// </summary>
-    public class FiltroDocumentoIndexado
+    public class FiltroReferenciaDocumento : ResultadoPaginadoBase
     {
         //public int Id { get; set; }
         //public DateTime CriadoEm { get; set; }
@@ -65,15 +68,5 @@ namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
         /// Filtra pelo número exato do documento fiscal.
         /// </summary>
         public int? NumeroSequencial { get; set; }
-
-        /// <summary>
-        /// Número da página para a paginação (Inicia em 1).
-        /// </summary>
-        public int Pagina { get; set; } = 1;
-
-        /// <summary>
-        /// Quantidade de registros por página.
-        /// </summary>
-        public int TamanhoPagina { get; set; } = 50;
     }
 }

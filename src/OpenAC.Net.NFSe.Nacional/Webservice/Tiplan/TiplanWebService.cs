@@ -57,8 +57,8 @@ public class TiplanWebService : NacionalWebservice
     /// </summary>
     /// <param name="configuracaoNFSe"></param>
     /// <param name="serviceInfo"></param>
-    public TiplanWebService(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indice) :
-        base(configuracaoNFSe, serviceInfo, indice)
+    public TiplanWebService(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo) :
+        base(configuracaoNFSe, serviceInfo)
     {
     }
     /// <summary>

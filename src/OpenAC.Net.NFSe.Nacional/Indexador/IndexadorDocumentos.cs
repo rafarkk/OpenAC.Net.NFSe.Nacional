@@ -2,8 +2,8 @@
 using OpenAC.Net.Core.Logging;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
-using OpenAC.Net.NFSe.Nacional.Indexador;
 using OpenAC.Net.NFSe.Nacional.Indexador.Model;
+using OpenAC.Net.NFSe.Nacional.Indexador.StorageProvider;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,28 +12,50 @@ using System.Linq;
 
 
 
-// Services/NfseIndexService.cs
-public class IndexadorDocumentosService : IOpenLog
+/// <summary>
+/// Serviço responsável pela indexação, busca, atualização e exportação de documentos fiscais (NFS-e) 
+/// utilizando um banco de dados SQLite para armazenamento de metadados.
+/// </summary>
+public class IndexadorDocumentos : IOpenLog
 {
     private readonly NFSeArquivoConfig _arquivoConfig;
+    private readonly IStorageProvider? _storageCustomizado;
+
+    /// <summary>
+    /// Obtém o provedor de armazenamento em uso. 
+    /// Retorna o provedor customizado, se injetado; caso contrário, utiliza o <see cref="LocalStorageProvider"/> padrão.
+    /// </summary>
+    public IStorageProvider Storage => _storageCustomizado ?? new LocalStorageProvider(_arquivoConfig.PathSalvar);
+
+    /// <summary>
+    /// Indica se a instância está utilizando um provedor de armazenamento customizado em vez do armazenamento local padrão.
+    /// </summary>
+    public bool PossuiStorageCustomizado => !(Storage is LocalStorageProvider);
 
     /// <summary>
     /// Número máximo de chaves permitidas por requisição no método de baixar documentos do inexador.
     /// </summary>
-    private const int MaxChavesPermitidas = 100;
+    private const int MaxChavesPermitidas = 50;
 
     private volatile bool _bancoInicializado = false;
     private readonly object _lockInit = new();
 
-    public IndexadorDocumentosService(NFSeArquivoConfig arquivoConfig)
+    /// <summary>
+    /// Inicializa uma nova instância da classe <see cref="IndexadorDocumentos"/>.
+    /// </summary>
+    /// <param name="arquivoConfig">Representa a configuração para arquivos NFSe.</param>
+    /// <param name="storage">Provedor de armazenamento customizado opcional.</param>
+    public IndexadorDocumentos(NFSeArquivoConfig arquivoConfig, IStorageProvider? storage = null)
     {
         _arquivoConfig = arquivoConfig;
+        _storageCustomizado = storage;
     }
 
-    // -------------------------------------------------------------------------
-    // Setup
-    // -------------------------------------------------------------------------
-
+    /// <summary>
+    /// Inicializa a estrutura do banco de dados SQLite, configurando pragmas de performance (WAL) 
+    /// e criando as tabelas e índices necessários caso não existam.
+    /// </summary>
+    /// <param name="con">Conexão aberta com o banco de dados SQLite.</param>
     private void InicializarBancoEstrutura(SqliteConnection con)
     {
         using var cmd = con.CreateCommand();
@@ -65,11 +87,13 @@ public class IndexadorDocumentosService : IOpenLog
         cmd.ExecuteNonQuery();
     }
 
-    // -------------------------------------------------------------------------
-    // Escrita
-    // -------------------------------------------------------------------------
-
-    public DocumentoIndexado? Indexar(DocumentoIndexado arquivo)
+    /// <summary>
+    /// Insere um novo registro no índice do banco de dados. 
+    /// Se já existir um registro com o mesmo caminho e nome de arquivo, os dados são atualizados (Upsert).
+    /// </summary>
+    /// <param name="referenciaDoc">Os dados do documento a ser indexado.</param>
+    /// <returns>Retorna o <see cref="ReferenciaDocumento"/> atualizado com o ID gerado pelo banco, ou null em caso de falha/timeout.</returns>
+    public ReferenciaDocumento? Indexar(ReferenciaDocumento referenciaDoc)
     {
         try
         {
@@ -94,21 +118,20 @@ public class IndexadorDocumentosService : IOpenLog
                 RETURNING *;
             """;
 
-            cmd.Parameters.AddWithValue("$chave", arquivo.ChaveReferencia);
-            cmd.Parameters.AddWithValue("$nome", arquivo.NomeArquivo);
-            cmd.Parameters.AddWithValue("$caminho", arquivo.CaminhoRelativo);
-            cmd.Parameters.AddWithValue("$tipo", arquivo.TipoDocumentoFiscal.ToString());
-            cmd.Parameters.AddWithValue("$evento", arquivo.TipoEvento?.ToString() ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("$prestador", arquivo.DocumentoPrestador ?? "");
-            cmd.Parameters.AddWithValue("$data", arquivo.DataDocumento.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture));
-            cmd.Parameters.AddWithValue("$nseq", arquivo.NumeroSequencial ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("$chave", referenciaDoc.ChaveReferencia);
+            cmd.Parameters.AddWithValue("$nome", referenciaDoc.NomeArquivo);
+            cmd.Parameters.AddWithValue("$caminho", referenciaDoc.CaminhoRelativo);
+            cmd.Parameters.AddWithValue("$tipo", referenciaDoc.TipoDocumentoFiscal.ToString());
+            cmd.Parameters.AddWithValue("$evento", referenciaDoc.TipoEvento?.ToString() ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("$prestador", referenciaDoc.DocumentoPrestador ?? "");
+            cmd.Parameters.AddWithValue("$data", referenciaDoc.DataDocumento.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("$nseq", referenciaDoc.NumeroSequencial ?? (object)DBNull.Value);
 
-            // O LerResultados agora retorna a lista com o registro recém-criado/atualizado
             return LerResultados(cmd).First();
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 5 || ex.SqliteErrorCode == 6)
         {
-            this.Log().Warn($"[Aviso] Timeout ao indexar arquivo referência {arquivo.ChaveReferencia}.");
+            this.Log().Warn($"[Aviso] Timeout ao indexar arquivo referência {referenciaDoc.ChaveReferencia}.");
             return null;
         }
         catch (Exception ex)
@@ -118,13 +141,18 @@ public class IndexadorDocumentosService : IOpenLog
         }
     }
 
-    public List<DocumentoIndexado> BuscarPorFiltro(FiltroDocumentoIndexado filtro)
+    /// <summary>
+    /// Realiza uma busca paginada de documentos no índice com base nos critérios especificados no filtro.
+    /// </summary>
+    /// <param name="filtro">Objeto contendo os parâmetros de filtro (chave, prestador, datas, etc.) e dados de paginação.</param>
+    /// <returns>Retorna um <see cref="ResultadoPaginado{DocumentoIndexado}"/> contendo o total de itens e a lista da página atual.</returns>
+    public ResultadoPaginado<ReferenciaDocumento> BuscarPorFiltro(FiltroReferenciaDocumento filtro)
     {
-        using var con = Conectar(lancarExcecao: true);
+        using var con = Conectar(lancarExcecoes: true);
         using var cmd = con.CreateCommand();
 
         var where = new List<string>();
-        var offset = (filtro.Pagina - 1) * filtro.TamanhoPagina;
+
         if (!string.IsNullOrWhiteSpace(filtro.ChaveReferencia))
         {
             where.Add("chave_referencia = $chaveReferencia");
@@ -152,15 +180,38 @@ public class IndexadorDocumentosService : IOpenLog
         }
 
         var clausulaWhere = where.Count > 0 ? $"WHERE {string.Join(" AND ", where)}" : "";
-        cmd.CommandText = $"SELECT * FROM arquivos {clausulaWhere} ORDER BY criado_em DESC LIMIT $limite OFFSET $offset";
 
-        cmd.Parameters.AddWithValue("$limite", filtro.TamanhoPagina);
-        cmd.Parameters.AddWithValue("$offset", offset);
+        cmd.CommandText = $"SELECT COUNT(*) FROM arquivos {clausulaWhere}";
+        var totalItems = Convert.ToInt32(cmd.ExecuteScalar());
 
-        return LerResultados(cmd);
+        var resultado = new ResultadoPaginado<ReferenciaDocumento>
+        {
+            TotalItems = totalItems,
+            Pagina = filtro.Pagina,
+            TamanhoPagina = filtro.TamanhoPagina,
+            Items = new List<ReferenciaDocumento>()
+        };
+
+        if (totalItems > 0)
+        {
+            var offset = (filtro.Pagina - 1) * filtro.TamanhoPagina;
+
+            cmd.CommandText = $"SELECT * FROM arquivos {clausulaWhere} ORDER BY id DESC LIMIT $limite OFFSET $offset";
+            cmd.Parameters.AddWithValue("$limite", filtro.TamanhoPagina);
+            cmd.Parameters.AddWithValue("$offset", offset);
+
+            resultado.Items = LerResultados(cmd);
+        }
+
+        return resultado;
     }
 
-    public DocumentoIndexado? Atualizar(DocumentoIndexado arquivo)
+    /// <summary>
+    /// Atualiza integralmente os dados de um documento existente no índice, localizando-o pelo ID.
+    /// </summary>
+    /// <param name="arquivo">Objeto contendo o ID e os novos dados do documento.</param>
+    /// <returns>Retorna o <see cref="ReferenciaDocumento"/> atualizado salvo no banco, ou null em caso de erro.</returns>
+    public ReferenciaDocumento? Atualizar(ReferenciaDocumento arquivo)
     {
         try
         {
@@ -207,7 +258,15 @@ public class IndexadorDocumentosService : IOpenLog
         }
     }
 
-    public DocumentoIndexado? AtualizarCampo(int id, string nomeCampo, object valor)
+    /// <summary>
+    /// Atualiza um único campo específico de um documento indexado. Suporta apenas campos liberados.
+    /// </summary>
+    /// <param name="id">O identificador único do documento.</param>
+    /// <param name="nomeCampo">O nome da coluna a ser atualizada no banco de dados.</param>
+    /// <param name="valor">O novo valor do campo.</param>
+    /// <returns>Retorna o <see cref="ReferenciaDocumento"/> atualizado, ou null em caso de erro.</returns>
+    /// <exception cref="ArgumentException">Lançada caso o <paramref name="nomeCampo"/> não esteja na lista de campos permitidos.</exception>
+    public ReferenciaDocumento? AtualizarCampo(int id, string nomeCampo, object valor)
     {
         try
         {
@@ -216,7 +275,6 @@ public class IndexadorDocumentosService : IOpenLog
 
             using var cmd = con.CreateCommand();
 
-            // Lista branca para evitar SQL Injection
             var camposPermitidos = new[] { "chave_referencia", "caminho_relativo", "nome_arquivo", "tipo_evento" };
             if (!camposPermitidos.Contains(nomeCampo.ToLower()))
                 throw new ArgumentException($"O campo '{nomeCampo}' não é permitido para atualização individual.");
@@ -236,6 +294,10 @@ public class IndexadorDocumentosService : IOpenLog
         }
     }
 
+    /// <summary>
+    /// Remove permanentemente um documento do índice através de seu identificador (ID).
+    /// </summary>
+    /// <param name="id">O identificador único do documento a ser deletado.</param>
     public void Remover(int id)
     {
         try
@@ -250,12 +312,21 @@ public class IndexadorDocumentosService : IOpenLog
         {
             this.Log().Warn($"[Aviso] Não foi possível remover o registro {id} (Banco Ocupado).");
         }
-        catch (Exception ex) // É bom ter um catch genérico aqui também
+        catch (Exception ex)
         {
             this.Log().Error($"[Indexador] Erro ao remover registro {id}: {ex.Message}");
         }
     }
 
+    /// <summary>
+    /// Exporta os documentos físicos associados às chaves de referência fornecidas. 
+    /// Retorna diretamente o arquivo caso seja apenas um, ou gera um arquivo ZIP consolidado para múltiplos.
+    /// </summary>
+    /// <param name="chaves">Lista de chaves de referência dos documentos desejados.</param>
+    /// <param name="estruturaZip">Define se a estrutura do arquivo ZIP será plana ou organizada por diretórios.</param>
+    /// <param name="tipoDocumento">Opcional. Filtra adicionalmente a extração por um tipo de documento fiscal específico.</param>
+    /// <returns>Retorna um <see cref="DocumentoExportResult"/> contendo os bytes do arquivo e seu content-type correspondente, ou null se nada for encontrado.</returns>
+    /// <exception cref="ArgumentException">Lançada caso nenhuma chave seja informada, se o limite máximo for excedido, ou se todas as chaves forem inválidas.</exception>
     public DocumentoExportResult? ExportarDocumentos(
     List<string> chaves,
     EstruturaZip estruturaZip,
@@ -282,28 +353,28 @@ public class IndexadorDocumentosService : IOpenLog
             .Select(d => new
             {
                 Documento = d,
-                CaminhoFisico = Path.Combine(rootPath, d.CaminhoRelativo, d.NomeArquivo),
+                CaminhoFisico = Path.Combine(rootPath, d.CaminhoRelativo, d.NomeArquivo),//TODO: averiguar
                 PastaNoZip = ObterPastaNoZip(d)
             })
-            .Where(x => File.Exists(x.CaminhoFisico))
+            .Where(x => Storage.Existe(x.Documento.CaminhoRelativo, x.Documento.NomeArquivo))
             .ToList();
 
         if (arquivosParaZipar.Count == 0)
             return null;
 
-        // Arquivo único — retorna direto sem zipar
+        //unico
         if (arquivosParaZipar.Count == 1)
         {
             var item = arquivosParaZipar[0];
             return new DocumentoExportResult
             {
-                ArquivoBytes = File.ReadAllBytes(item.CaminhoFisico),
+                ArquivoBytes = Storage.Ler(item.Documento.CaminhoRelativo, item.Documento.NomeArquivo),
                 NomeArquivo = item.Documento.NomeArquivo,
                 ContentType = "application/xml"
             };
         }
 
-        // Múltiplos arquivos — zipa
+        //multiplos
         byte[] conteudo;
         using (var memoryStream = new MemoryStream())
         {
@@ -323,7 +394,8 @@ public class IndexadorDocumentosService : IOpenLog
                     {
                         var entry = zip.CreateEntry(entryPath, CompressionLevel.Fastest);
                         using var entryStream = entry.Open();
-                        using var fileStream = File.OpenRead(item.CaminhoFisico);
+                        var fileBytes = Storage.Ler(item.Documento.CaminhoRelativo, item.Documento.NomeArquivo);
+                        using var fileStream = new MemoryStream(fileBytes);
                         fileStream.CopyTo(entryStream);
                     }
                     catch (Exception ex)
@@ -345,28 +417,30 @@ public class IndexadorDocumentosService : IOpenLog
     }
 
     #region auxiliares
-    private DocumentoIndexado? BuscarPorId(int id)
+
+    /// <summary>
+    /// Busca um documento indexado pelo seu identificador primário interno.
+    /// </summary>
+    /// <param name="id">ID do documento no banco.</param>
+    /// <returns>Retorna o <see cref="ReferenciaDocumento"/> correspondente, ou null se não for encontrado.</returns>
+    private ReferenciaDocumento? BuscarPorId(int id)
     {
-        using var con = Conectar(lancarExcecao: true);
+        using var con = Conectar(lancarExcecoes: true);
         using var cmd = con.CreateCommand();
         cmd.CommandText = "SELECT * FROM arquivos WHERE id = $id LIMIT 1";
         cmd.Parameters.AddWithValue("$id", id);
         return LerResultados(cmd).FirstOrDefault();
     }
 
-    //private DocumentoIndexado? BuscarPorCaminhoENome(string caminho, string nome)
-    //{
-    //    using var con = Conectar();
-    //    using var cmd = con.CreateCommand();
-    //    cmd.CommandText = "SELECT * FROM arquivos WHERE caminho_relativo = $caminho AND nome_arquivo = $nome LIMIT 1";
-    //    cmd.Parameters.AddWithValue("$caminho", caminho);
-    //    cmd.Parameters.AddWithValue("$nome", nome);
-    //    return LerResultados(cmd).FirstOrDefault();
-    //}
-
-    private List<DocumentoIndexado> BuscarPorChaves(List<string> chaves, TipoDocumento? tipoDocumento)
+    /// <summary>
+    /// Busca múltiplos documentos indexados baseados em uma lista de chaves de referência exatas.
+    /// </summary>
+    /// <param name="chaves">Lista de chaves de referência.</param>
+    /// <param name="tipoDocumento">Opcional. Filtro de tipo de documento fiscal específico.</param>
+    /// <returns>Lista de <see cref="ReferenciaDocumento"/> localizados.</returns>
+    private List<ReferenciaDocumento> BuscarPorChaves(List<string> chaves, TipoDocumento? tipoDocumento)
     {
-        using var con = Conectar(lancarExcecao: true);
+        using var con = Conectar(lancarExcecoes: true);
         using var cmd = con.CreateCommand();
 
         var placeholders = chaves.Select((_, i) => $"$c{i}");
@@ -385,22 +459,25 @@ public class IndexadorDocumentosService : IOpenLog
         return LerResultados(cmd);
     }
 
-    private List<DocumentoIndexado> LerResultados(SqliteCommand cmd)
+    /// <summary>
+    /// Processa o <see cref="SqliteDataReader"/> gerado pela execução do comando e o converte 
+    /// em uma lista de objetos do domínio <see cref="ReferenciaDocumento"/>.
+    /// </summary>
+    /// <param name="cmd">Comando SQLite recém-configurado e pronto para leitura.</param>
+    /// <returns>Lista materializada de documentos mapeados.</returns>
+    private List<ReferenciaDocumento> LerResultados(SqliteCommand cmd)
     {
-        var lista = new List<DocumentoIndexado>();
+        var lista = new List<ReferenciaDocumento>();
         using var reader = cmd.ExecuteReader();
 
         while (reader.Read())
         {
-            // 1. Tratamento para TipoDocumento (Obrigatório)
             var tipoDocStr = reader.GetString(reader.GetOrdinal("tipo_documento_fiscal"));
             if (!Enum.TryParse<TipoDocumento>(tipoDocStr, out var tipoDoc))
             {
-                // Opcional: Logar aqui que um valor inválido foi encontrado no banco
-                // tipoDoc assumirá o valor padrão (geralmente o primeiro item do Enum)
+                
             }
 
-            // 2. Tratamento para TipoEvento (Pode ser NULL no banco)
             TipoEvento? tipoEvento = null;
             var ordinalEvento = reader.GetOrdinal("tipo_evento");
 
@@ -413,7 +490,7 @@ public class IndexadorDocumentosService : IOpenLog
                 }
             }
 
-            lista.Add(new DocumentoIndexado
+            lista.Add(new ReferenciaDocumento
             {
                 Id = reader.GetInt32(reader.GetOrdinal("id")),
                 CriadoEm = DateTime.Parse(reader.GetString(reader.GetOrdinal("criado_em")), null, System.Globalization.DateTimeStyles.RoundtripKind),
@@ -423,7 +500,6 @@ public class IndexadorDocumentosService : IOpenLog
                 DocumentoPrestador = reader.GetString(reader.GetOrdinal("documento_prestador")),
                 DataDocumento = DateTime.Parse(reader.GetString(reader.GetOrdinal("data_documento")), null, System.Globalization.DateTimeStyles.RoundtripKind),
 
-                // Usando os valores parseados com segurança
                 TipoDocumentoFiscal = tipoDoc,
                 TipoEvento = tipoEvento,
 
@@ -435,8 +511,13 @@ public class IndexadorDocumentosService : IOpenLog
         return lista;
     }
 
-    private string ObterPastaNoZip(DocumentoIndexado documento) =>
-        documento.TipoDocumentoFiscal switch
+    /// <summary>
+    /// Mapeia o tipo de documento fiscal para o nome de uma pasta padrão a ser utilizada na estruturação do arquivo ZIP exportado.
+    /// </summary>
+    /// <param name="referenciaDoc">O registro do documento indexado avaliado.</param>
+    /// <returns>Nome do diretório para organização ("Rps", "NFSe" ou "Outros").</returns>
+    private string ObterPastaNoZip(ReferenciaDocumento referenciaDoc) =>
+        referenciaDoc.TipoDocumentoFiscal switch
         {
             TipoDocumento.DPS => "Rps",
             TipoDocumento.PEDIDO_REGISTRO_EVENTO => "Rps",
@@ -445,34 +526,17 @@ public class IndexadorDocumentosService : IOpenLog
             _ => "Outros"
         };
 
-    //public string? ResolverCaminho(DocumentoIndexado registro)
-    //{
-    //    var rootPath = _arquivoConfig.PathDocumentosDb; // Ou o caminho base configurado
-    //    var esperado = Path.Combine(rootPath, registro.CaminhoRelativo, registro.NomeArquivo);
-
-    //    if (File.Exists(esperado))
-    //        return esperado;
-
-    //    // Se não achou no local esperado, tenta buscar pelo nome em subpastas
-    //    var encontrado = Directory
-    //        .GetFiles(rootPath, registro.NomeArquivo, SearchOption.AllDirectories)
-    //        .FirstOrDefault();
-
-    //    if (encontrado is null)
-    //        return null;
-
-    //    // Atualiza o banco com o novo local encontrado
-    //    var novoRelativo = Path.GetDirectoryName(Path.GetRelativePath(rootPath, encontrado)) ?? "";
-    //    AtualizarCaminho(registro.NomeArquivo, novoRelativo);
-
-    //    return encontrado;
-    //}
-
-    private SqliteConnection? Conectar(bool lancarExcecao = false)
+    /// <summary>
+    /// Gerencia e estabelece a conexão principal com o banco de dados SQLite local, 
+    /// realizando a injeção do timeout e garantindo a inicialização da estrutura das tabelas usando um controle de lock.
+    /// </summary>
+    /// <param name="lancarExcecoes">Determina se as exceções de banco devem ser relançadas (throw) ou silenciadas (retornando null).</param>
+    /// <returns>Instância aberta de <see cref="SqliteConnection"/> pronta para uso, ou null em caso de falha não-fatal.</returns>
+    private SqliteConnection? Conectar(bool lancarExcecoes = false)
     {
         try
         {
-            var rootDbPath = _arquivoConfig.PathIndexadorDocsDb;
+            var rootDbPath = _arquivoConfig.Indexador.PathIndexadorDb;
             var dbPath = Path.Combine(rootDbPath, "indexador_docs.db");
 
             if (!Directory.Exists(rootDbPath))
@@ -483,7 +547,7 @@ public class IndexadorDocumentosService : IOpenLog
             {
                 DataSource = dbPath,
                 Mode = SqliteOpenMode.ReadWriteCreate,
-                DefaultTimeout = 10 // Aqui está o segredo! Equivale ao busy_timeout (em segundos).
+                DefaultTimeout = 10
             }.ConnectionString;
 
             var con = new SqliteConnection(connectionString);
@@ -506,7 +570,7 @@ public class IndexadorDocumentosService : IOpenLog
         {
             this.Log().Error($"[Indexador] Erro inesperado no banco: {ex.Message}");
 
-            if (lancarExcecao)
+            if (lancarExcecoes)
                 throw;
 
             return null;

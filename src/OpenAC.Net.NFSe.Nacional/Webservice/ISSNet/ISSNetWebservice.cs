@@ -8,7 +8,7 @@ namespace OpenAC.Net.NFSe.Nacional.Webservice.ISSNet
     /// Autor: Adriano Trentim
     /// Criação: 03/01/2025
     /// </summary>
-    public class ISSNetWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indexadorDocs) : NacionalWebservice(configuracaoNFSe, serviceInfo, indexadorDocs)
+    public class ISSNetWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentos indexadorDocs) : NacionalWebservice(configuracaoNFSe, serviceInfo)
     {
         
     }

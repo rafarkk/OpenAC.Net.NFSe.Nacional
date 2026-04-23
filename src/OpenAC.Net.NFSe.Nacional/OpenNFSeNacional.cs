@@ -29,13 +29,14 @@
 // <summary></summary>
 // ***********************************************************************
 
-using System;
-using System.Net;
-using System.Threading.Tasks;
 using OpenAC.Net.Core.Logging;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Indexador.StorageProvider;
 using OpenAC.Net.NFSe.Nacional.Webservice;
+using System;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace OpenAC.Net.NFSe.Nacional;
 
@@ -54,14 +55,22 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// <summary>
     /// Instância do serviço de índice utilizada para catalogar os arquivos gerados e resolver seus caminhos físicos de armazenamento.
     /// </summary>
-    public IndexadorDocumentosService IndexadorDocs { get; }
+    public IndexadorDocumentos IndexadorDocs { get; }
+
+    /// <summary>
+    /// Storage provider responsável pelo armazenamento dos documentos.
+    /// Quando não informado, o provider local padrão é utilizado.
+    /// </summary>
+    public IStorageProvider? Storage { get; }
 
     #endregion Properties
 
     #region Constructors
-    public OpenNFSeNacional()
+    /// <param name="stocustomStoragerage">Provedor de armazenamento customizado opcional.</param>
+    public OpenNFSeNacional(IStorageProvider? customStorage = null)
     {
-        IndexadorDocs = new IndexadorDocumentosService(Configuracoes.Arquivos);
+        Storage = customStorage;
+        IndexadorDocs = new IndexadorDocumentos(Configuracoes.Arquivos, customStorage);
     }
     #endregion Constructors
 

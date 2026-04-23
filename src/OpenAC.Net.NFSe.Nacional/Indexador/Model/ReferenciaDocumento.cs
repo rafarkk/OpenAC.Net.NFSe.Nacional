@@ -10,7 +10,7 @@ namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
     /// <summary>
     /// Representa o registro de um documento eletrônico (XML, JSON, etc.) no índice de localização.
     /// </summary>
-    public class DocumentoIndexado
+    public class ReferenciaDocumento
     {
         /// <summary>
         /// Identificador único do registro no banco de dados local.

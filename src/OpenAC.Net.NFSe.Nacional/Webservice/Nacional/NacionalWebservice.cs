@@ -59,8 +59,19 @@ public class NacionalWebservice : NFSeWebserviceBase
     /// </summary>
     /// <param name="configuracaoNFSe">Configuração da NFSe.</param>
     /// <param name="serviceInfo">Informações do serviço</param>
-    public NacionalWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentosService indexadorDocs) :
+    /// <param name="indexadorDocs">Serviço responsável por indexar e localizar os documentos no sistema de arquivos.</param>
+    public NacionalWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo, IndexadorDocumentos indexadorDocs) :
         base(configuracaoNFSe, serviceInfo, indexadorDocs)
+    {
+    }
+
+    /// <summary>
+    /// Inicializa uma nova instância da classe <see cref="NacionalWebservice"/>.
+    /// </summary>
+    /// <param name="configuracaoNFSe">Configuração da NFSe.</param>
+    /// <param name="serviceInfo">Informações do serviço</param>
+    public NacionalWebservice(ConfiguracaoNFSe configuracaoNFSe, NFSeServiceInfo serviceInfo) :
+        base(configuracaoNFSe, serviceInfo)
     {
     }
 
@@ -249,7 +260,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
                 var nomeArquivoEvento = $"{prefixoNomeArquivoEventoNfse}_evento_{nSeqEvento}.xml";
 
-                var docIndexado = new DocumentoIndexado
+                var referenciaDoc = new ReferenciaDocumento
                 {
                     CriadoEm = DateTime.Now,
                     DocumentoPrestador = documento,
@@ -263,7 +274,7 @@ public class NacionalWebservice : NFSeWebserviceBase
                         : (int?)null
                 };
 
-                GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEvento, documento, evento.Informacoes.DhEvento.DateTime, true, docIndexado);
+                GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEvento, documento, evento.Informacoes.DhEvento.DateTime, true, referenciaDoc);
             }
             catch (Exception)
             {
@@ -296,7 +307,7 @@ public class NacionalWebservice : NFSeWebserviceBase
             : dps.Informacoes.NumeroDps.ZeroFill(6);
 
         var nomeArquivoDps = $"{prefixoNomeArquivoDps}_dps.xml";
-        var docIndexado = new DocumentoIndexado
+        var referenciaDocDps = new ReferenciaDocumento
         {
             CriadoEm = DateTime.Now,
             DocumentoPrestador = documento,
@@ -306,7 +317,7 @@ public class NacionalWebservice : NFSeWebserviceBase
             TipoDocumentoFiscal = TipoDocumento.DPS,
         };
 
-        var (caminhoDps, idDocIndexado) = GravarDpsEmDisco(dps.Xml, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime, docIndexado: docIndexado);
+        var (caminhoDps, idDocIndexado) = GravarDpsEmDisco(dps.Xml, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime, referenciaDoc: referenciaDocDps);
 
         var envio = new DpsEnvio
         {
@@ -341,7 +352,7 @@ public class NacionalWebservice : NFSeWebserviceBase
                 {
                     var docAtualizado = IndexadorDocs.AtualizarCampo(idDocIndexado.Value, "chave_referencia", chaveAcesso);
 
-                    if (Configuracao.Arquivos.IndexarDocumentosSalvos && docAtualizado == null)
+                    if (Configuracao.Arquivos.UsarIndexadorDocumentos && docAtualizado == null)
                     {
                         this.Log().Warn($"Webservice: [DANFSe] - Erro ao atualizar campo de arquivo em disco.");
                     }
@@ -351,7 +362,7 @@ public class NacionalWebservice : NFSeWebserviceBase
                     ? retorno?.Resultado?.ChaveAcesso
                     : dps.Informacoes.NumeroDps.ZeroFill(6))}_nfse.xml";
 
-                var docNfseIndexado = new DocumentoIndexado
+                var referenciaDocNfse = new ReferenciaDocumento
                 {
                     CriadoEm = DateTime.Now,
                     DocumentoPrestador = documento,
@@ -362,7 +373,7 @@ public class NacionalWebservice : NFSeWebserviceBase
                 };
 
 
-                GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, nomeArquivoNfse, documento, dps.Informacoes.DhEmissao.DateTime, docIndexado: docNfseIndexado);
+                GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, nomeArquivoNfse, documento, dps.Informacoes.DhEmissao.DateTime, referenciaDoc: referenciaDocNfse);
             }
             catch (Exception)
             {

@@ -174,7 +174,7 @@ public sealed class NFSeServiceManager
     /// <exception cref="ArgumentNullException">Se <paramref name="config"/> for nulo.</exception>
     /// <exception cref="OpenException">Se o provedor ou versão não estiverem registrados ou a classe do provedor for incompatível.</exception>
     /// <exception cref="InvalidOperationException">Se a instância do provedor não puder ser criada.</exception>
-    public NFSeWebserviceBase GetProvider(ConfiguracaoNFSe config, IndexadorDocumentosService indexadorDocs)
+    public NFSeWebserviceBase GetProvider(ConfiguracaoNFSe config, IndexadorDocumentos indexadorDocs)
     {
         var serviceInfo = Services[config.WebServices.CodigoMunicipio];
 

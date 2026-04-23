@@ -43,6 +43,48 @@ namespace OpenAC.Net.NFSe.Nacional.Common;
 /// </summary>
 public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
 {
+    /// <summary>
+    /// Configurações do indexador de documentos.
+    /// Utilizado quando <c>IndexarDocumentosSalvos</c> estiver habilitado.
+    /// </summary>
+    public class IndexadorConfig
+    {
+        /// <summary>
+        /// Obtém ou define o caminho para o arquivo de banco de dados que guarda a indexação dos documentos salvos.
+        /// </summary>
+        /// <value>O caminho para o arquivo de banco de dados.</value>
+        public string PathIndexadorDb { get; set; }
+
+        /// <summary>
+        /// Quando habilitado, mantém uma cópia do documento em disco local,
+        /// mesmo com storage provider remoto (ex: S3).
+        /// 
+        /// A cópia local não é indexada quando há um storage provider customizado.
+        /// Sem provider customizado, o OpenNFSeNacional utiliza o provider local por padrão,
+        /// e o arquivo é indexado normalmente.
+        /// 
+        /// Exemplo:
+        /// - Com storage provider customizado (S3): arquivo enviado ao S3 é indexado e a cópia local não é indexada.
+        /// - Sem storage provider customizado (provider local padrão): arquivo é salvo localmente e indexado normalmente.
+        /// </summary>
+        public bool ManterCopiaLocal { get; set; }
+
+        public IndexadorConfig()
+        {
+            var path = Path.GetDirectoryName((Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).Location);
+            if (Directory.Exists(path))
+            {
+                PathIndexadorDb = Path.Combine(path, "Data");
+            }
+            else
+            {
+                PathIndexadorDb = string.Empty;
+            }
+
+            ManterCopiaLocal = true;
+        }
+    }
+
     #region Constructors
 
     /// <summary>
@@ -56,17 +98,16 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
             PathNFSe = Path.Combine(path, "NFSe");
             PathEnvio = Path.Combine(path, "Envio");
             PathDps = Path.Combine(path, "DPS");
-            PathIndexadorDocsDb = Path.Combine(path, "Data");
         }
         else
         {
             PathNFSe = string.Empty;
             PathEnvio = string.Empty;
             PathDps = string.Empty;
-            PathIndexadorDocsDb = string.Empty;
         }
 
-        IndexarDocumentosSalvos = false;
+        UsarIndexadorDocumentos = false;
+        Indexador = new();
     }
 
     #endregion Constructors
@@ -92,17 +133,11 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
     public string PathDps { get; set; }
 
     /// <summary>
-    /// Obtém ou define o caminho para o arquivo de banco de dados que guarda a indexação dos documentos salvos.
+    /// Define se deve utilizar o indexador de documentos.
+    /// Quando habilitado, cria/atualiza um banco SQLite com índice dos documentos salvos.
+    /// Requer <c>Configuracoes.Arquivos.Salvar = true</c> (necessário para persistir os arquivos).
     /// </summary>
-    /// <value>O caminho para o arquivo de banco de dados.</value>
-    public string PathIndexadorDocsDb { get; set; }
-
-    /// <summary>
-    /// Define/retorna de deve manter um índice em SQLite dos arquivos XML salvos em disco.
-    /// Quando habilitado (true), será criado/atualizado um banco SQLite para armazenar e indexar os documentos,
-    /// facilitando consultas e organização dos arquivos.
-    /// </summary>
-    public bool IndexarDocumentosSalvos { get; set; }
+    public bool UsarIndexadorDocumentos { get; set; }
 
     /// <summary>
     /// Obtém ou define a Versão do Schema.
@@ -117,6 +152,12 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
     /// cujo formato pode variar e não segue um padrão fixo.
     /// </summary>
     public bool PadronizarNomes { get; set; }
+
+    /// <summary>
+    /// Configurações do indexador de documentos.
+    /// Utilizado quando <c>IndexarDocumentosSalvos</c> estiver habilitado.
+    /// </summary>
+    public IndexadorConfig Indexador { get; set; }
 
     #endregion Properties
 
