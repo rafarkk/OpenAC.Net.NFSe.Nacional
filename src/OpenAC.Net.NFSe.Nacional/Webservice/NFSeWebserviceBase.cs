@@ -1,6 +1,5 @@
 using OpenAC.Net.Core.Logging;
 using OpenAC.Net.DFe.Core;
-using OpenAC.Net.DFe.Core.Extensions;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
@@ -198,6 +197,70 @@ public abstract class NFSeWebserviceBase : IOpenLog
                                                string.Join(Environment.NewLine, errosSchema));
     }
 
+    ///// <summary>
+    ///// Grava o arquivo no disco conforme o tipo especificado.
+    ///// </summary>
+    ///// <param name="tipo">Tipo do arquivo.</param>
+    ///// <param name="conteudoArquivo">Conteúdo do arquivo.</param>
+    ///// <param name="nomeArquivo">Nome do arquivo.</param>
+    ///// <param name="documento">Documento do prestador.</param>
+    ///// <param name="data">Data de emissão (opcional).</param>
+    ///// <param name="incrementarNome">
+    ///// Indica se o nome do arquivo deve ser incrementado caso já exista,
+    ///// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
+    ///// </param>
+    ///// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
+    ///// <returns>
+    ///// Uma tupla contendo:
+    ///// - <c>caminhoCompleto</c>: caminho físico final onde o arquivo foi salvo.
+    ///// - <c>documentoIndexadoId</c>: identificador do registro no banco de dados (gerado ou atualizado),
+    /////   ou <c>null</c> caso a indexação não tenha ocorrido.
+    ///// </returns>
+
+    //protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
+    //{
+    //    var diretorioAbsoluto = tipo switch
+    //    {
+    //        TipoArquivo.Webservice => Path.Combine(Configuracao.Arquivos.GetPathEnvio(data ?? DateTime.Today, documento ?? string.Empty)),
+    //        TipoArquivo.Rps => Path.Combine(Configuracao.Arquivos.GetPathDps(data ?? DateTime.Today, documento ?? string.Empty)),
+    //        TipoArquivo.NFSe => Path.Combine(Configuracao.Arquivos.GetPathNFSe(data ?? DateTime.Today, documento ?? string.Empty)),
+    //        _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null)
+    //    };
+
+    //    var indexavel = tipo is TipoArquivo.NFSe or TipoArquivo.Rps && Configuracao.Arquivos.IndexarAutomaticamente && referenciaDoc != null;
+
+    //    if (indexavel)
+    //    {
+    //        var caminhoRelativo = GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorioAbsoluto);
+    //        var motorNuvem = IndexadorDocs.Storage;
+
+    //        var nomeFinal = incrementarNome ? GerarNomeUnico(caminhoRelativo, nomeArquivo, motorNuvem) : nomeArquivo;
+    //        var caminhoAbsolutoFinal = Path.Combine(diretorioAbsoluto, nomeFinal);
+
+    //        motorNuvem.Salvar(caminhoRelativo, nomeFinal, conteudoArquivo);
+
+    //        if (Configuracao.Arquivos.Indexador.GarantirCopiaLocal && IndexadorDocs.PossuiStorageCustomizado)
+    //        {
+    //            if (!Directory.Exists(diretorioAbsoluto)) Directory.CreateDirectory(diretorioAbsoluto);
+    //            File.WriteAllText(caminhoAbsolutoFinal, conteudoArquivo, Encoding.UTF8);
+    //        }
+
+    //        referenciaDoc.CaminhoRelativo = caminhoRelativo;
+    //        referenciaDoc.NomeArquivo = nomeFinal;
+    //        var docSalvo = IndexadorDocs.Indexar(referenciaDoc);
+
+    //        return (caminhoAbsolutoFinal, docSalvo?.Id);
+    //    }
+    //    else
+    //    {
+    //        var caminhoFinal = incrementarNome ? GerarPathUnicoLocal(diretorioAbsoluto, nomeArquivo) : Path.Combine(diretorioAbsoluto, nomeArquivo);
+
+    //        if (!Directory.Exists(diretorioAbsoluto)) Directory.CreateDirectory(diretorioAbsoluto);
+    //        File.WriteAllText(caminhoFinal, conteudoArquivo, Encoding.UTF8);
+    //        return (caminhoFinal, null);
+    //    }
+    //}
+
     /// <summary>
     /// Grava o xml da Dps no disco.
     /// </summary>
@@ -210,17 +273,11 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
     /// </param>
     /// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
-    /// <returns>
-    /// Uma tupla contendo:
-    /// - <c>caminhoCompleto</c>: caminho físico final onde o arquivo foi salvo.
-    /// - <c>documentoIndexadoId</c>: identificador do registro no banco de dados (gerado ou atualizado),
-    ///   ou <c>null</c> caso a indexação não tenha ocorrido.
-    /// </returns>
-    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarDpsEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
+    protected virtual void GravarDpsEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
     {
-        if (Configuracao.Arquivos.Salvar == false) return (null, null);
+        if (Configuracao.Arquivos.Salvar == false) return;
 
-        return GravarArquivoEmDisco(TipoArquivo.Rps, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, referenciaDoc);
+        GravarArquivoEmDisco(TipoArquivo.Rps, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, referenciaDoc);
     }
 
     /// <summary>
@@ -235,17 +292,11 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
     /// </param>
     /// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
-    /// <returns>
-    /// Uma tupla contendo:
-    /// - <c>caminhoCompleto</c>: caminho físico final onde o arquivo foi salvo.
-    /// - <c>documentoIndexadoId</c>: identificador do registro no banco de dados (gerado ou atualizado),
-    ///   ou <c>null</c> caso a indexação não tenha ocorrido.
-    /// </returns>
-    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarNFSeEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
+    protected virtual void GravarNFSeEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
     {
-        if (Configuracao.Arquivos.Salvar == false) return (null, null);
+        if (Configuracao.Arquivos.Salvar == false) return;
 
-        return GravarArquivoEmDisco(TipoArquivo.NFSe, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, referenciaDoc);
+        GravarArquivoEmDisco(TipoArquivo.NFSe, conteudoArquivo, nomeArquivo, documento, data, incrementarNome, referenciaDoc);
     }
 
     /// <summary>
@@ -270,18 +321,11 @@ public abstract class NFSeWebserviceBase : IOpenLog
     /// <param name="documento">Documento do prestador.</param>
     /// <param name="data">Data de emissão (opcional).</param>
     /// <param name="incrementarNome">
+    /// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
     /// Indica se o nome do arquivo deve ser incrementado caso já exista,
     /// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
     /// </param>
-    /// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
-    /// <returns>
-    /// Uma tupla contendo:
-    /// - <c>caminhoCompleto</c>: caminho físico final onde o arquivo foi salvo.
-    /// - <c>documentoIndexadoId</c>: identificador do registro no banco de dados (gerado ou atualizado),
-    ///   ou <c>null</c> caso a indexação não tenha ocorrido.
-    /// </returns>
-
-    protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
+    protected virtual void GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false, ReferenciaDocumento referenciaDoc = null)
     {
         var diretorioAbsoluto = tipo switch
         {
@@ -291,62 +335,216 @@ public abstract class NFSeWebserviceBase : IOpenLog
             _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null)
         };
 
-        var indexavel = tipo is TipoArquivo.NFSe or TipoArquivo.Rps && Configuracao.Arquivos.UsarIndexadorDocumentos && referenciaDoc != null;
+        var caminhoFinal = incrementarNome ? GerarPathUnicoLocal(diretorioAbsoluto, nomeArquivo) : Path.Combine(diretorioAbsoluto, nomeArquivo);
 
-        if (indexavel)
+        if (!Directory.Exists(diretorioAbsoluto)) Directory.CreateDirectory(diretorioAbsoluto);
+        File.WriteAllText(caminhoFinal, conteudoArquivo, Encoding.UTF8);
+
+        if (referenciaDoc != null && Configuracao.Arquivos.IndexarAutomaticamente)
+            IndexarArquivo(diretorioAbsoluto, conteudoArquivo, nomeArquivo, referenciaDoc, incrementarNome);
+    }
+
+    ///// <summary>
+    ///// Grava o xml da Dps no disco, gerenciando a criação do objeto de indexação automaticamente.
+    ///// </summary>
+    ///// <param name="conteudoArquivo">Conteúdo do arquivo.</param>
+    ///// <param name="nomeArquivo">Nome do arquivo.</param>
+    ///// <param name="documento">Documento do prestador.</param>
+    ///// <param name="data">Data de emissão (opcional).</param>
+    ///// <param name="chaveReferencia">ID da DPS (antes do envio) ou a Chave de Acesso da NFSe (após a emissão).</param>
+    ///// <param name="incrementarNome">
+    ///// Indica se o nome do arquivo deve ser incrementado caso já exista,
+    ///// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
+    ///// </param>
+    //protected virtual int? GravarDpsEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, string chaveReferencia, bool incrementarNome = false)
+    //{
+    //    ReferenciaDocumento? refDoc = null;
+    //    if (Configuracao.Arquivos.IndexarAutomaticamente)
+    //    {
+    //        refDoc = new ReferenciaDocumento
+    //        {
+    //            CriadoEm = DateTime.Now,
+    //            DocumentoPrestador = documento ?? "",
+    //            ChaveReferencia = chaveReferencia,
+    //            NomeArquivo = nomeArquivo,
+    //            DataDocumento = data,
+    //            TipoDocumentoFiscal = TipoRegistroDocumento.DPS,
+    //            Ambiente = Configuracao.WebServices.Ambiente
+    //        };
+    //    }
+
+    //    // Chama o método original da biblioteca (Retrocompatibilidade garantida)
+    //    GravarDpsEmDisco(conteudoArquivo, nomeArquivo, documento, data, incrementarNome, refDoc);
+
+    //    return refDoc?.Id > 0 ? refDoc.Id : null;
+    //}
+
+    ///// <summary>
+    ///// Grava o xml da NFSe no disco, gerenciando a criação do objeto de indexação automaticamente.
+    ///// </summary>
+    ///// <param name="conteudoArquivo">Conteúdo do arquivo.</param>
+    ///// <param name="nomeArquivo">Nome do arquivo.</param>
+    ///// <param name="documento">Documento do prestador.</param>
+    ///// <param name="data">Data de emissão (opcional).</param>
+    ///// <param name="chaveReferencia">ID da DPS (antes do envio) ou a Chave de Acesso da NFSe (após a emissão).</param>
+    ///// <param name="incrementarNome">
+    ///// Indica se o nome do arquivo deve ser incrementado caso já exista,
+    ///// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
+    ///// </param>
+    //protected virtual int? GravarNFSeEmDisco(string conteudoArquivo, string nomeArquivo, string? documento, DateTime data, string chaveReferencia, bool incrementarNome = false)
+    //{
+    //    ReferenciaDocumento? refDoc = null;
+    //    if (Configuracao.Arquivos.IndexarAutomaticamente)
+    //    {
+    //        refDoc = new ReferenciaDocumento
+    //        {
+    //            CriadoEm = DateTime.Now,
+    //            DocumentoPrestador = documento ?? "",
+    //            ChaveReferencia = chaveReferencia,
+    //            NomeArquivo = nomeArquivo,
+    //            DataDocumento = data,
+    //            TipoDocumentoFiscal = TipoRegistroDocumento.NFSE,
+    //            Ambiente = Configuracao.WebServices.Ambiente
+    //        };
+    //    }
+
+    //    GravarNFSeEmDisco(conteudoArquivo, nomeArquivo, documento, data, incrementarNome, refDoc);
+
+    //    return refDoc?.Id > 0 ? refDoc.Id : null;
+    //}
+
+    ///// <summary>
+    ///// Grava o Pedido de Registro de Evento no disco e indexa automaticamente.
+    ///// </summary>
+    //protected virtual int? GravarPedidoEventoEmDisco(string xml, string nomeArquivo, string? documento, DateTime data, string chaveNfse, TipoEvento tipoEvento, bool incrementarNome = false)
+    //{
+    //    ReferenciaDocumento? refDoc = null;
+    //    if (Configuracao.Arquivos.IndexarAutomaticamente)
+    //    {
+    //        refDoc = new ReferenciaDocumento
+    //        {
+    //            CriadoEm = DateTime.Now,
+    //            DocumentoPrestador = documento ?? "",
+    //            ChaveReferencia = chaveNfse,
+    //            NomeArquivo = nomeArquivo,
+    //            DataDocumento = data,
+    //            TipoDocumentoFiscal = TipoRegistroDocumento.PEDIDO_REGISTRO_EVENTO,
+    //            Ambiente = Configuracao.WebServices.Ambiente,
+    //            TipoEvento = tipoEvento
+    //        };
+    //    }
+
+    //    // Chama o método original da lib para manter compatibilidade
+    //    GravarDpsEmDisco(xml, nomeArquivo, documento, data, incrementarNome, refDoc);
+
+    //    return refDoc?.Id > 0 ? refDoc.Id : null;
+    //}
+
+    ///// <summary>
+    ///// Grava o Evento confirmado retornado pela SEFAZ e indexa automaticamente.
+    ///// </summary>
+    //protected virtual int? GravarEventoEmDisco(string xml, string nomeArquivo, string? documento, DateTime data, string chaveNfse, TipoEvento tipoEvento, int sequencial, bool incrementarNome = false)
+    //{
+    //    ReferenciaDocumento? refDoc = null;
+    //    if (Configuracao.Arquivos.IndexarAutomaticamente)
+    //    {
+    //        refDoc = new ReferenciaDocumento
+    //        {
+    //            CriadoEm = DateTime.Now,
+    //            DocumentoPrestador = documento ?? "",
+    //            ChaveReferencia = chaveNfse,
+    //            NomeArquivo = nomeArquivo,
+    //            DataDocumento = data,
+    //            TipoDocumentoFiscal = TipoRegistroDocumento.EVENTO,
+    //            Ambiente = Configuracao.WebServices.Ambiente,
+    //            TipoEvento = tipoEvento,
+    //            NumeroSequencial = sequencial
+    //        };
+    //    }
+
+    //    // Chama o método original de gravar NFSe da lib
+    //    GravarNFSeEmDisco(xml, nomeArquivo, documento, data, incrementarNome, refDoc);
+
+    //    return refDoc?.Id > 0 ? refDoc.Id : null;
+    //}
+
+    /// <summary>
+    /// Constrói o objeto de referência para o Indexador apenas se a configuração de indexação automática estiver ativa.
+    /// </summary>
+    protected ReferenciaDocumento? CriarReferenciaIndexacao(
+        TipoRegistroDocumento tipoDoc, string chave, string nomeArquivo, string documento, DateTime data, TipoEvento? evento = null, int? seq = null)
+    {
+        if (!Configuracao.Arquivos.IndexarAutomaticamente) return null;
+
+        return new ReferenciaDocumento
         {
-            var caminhoRelativo = GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorioAbsoluto);
-            var motorNuvem = IndexadorDocs.Storage;
+            CriadoEm = DateTime.Now,
+            DocumentoPrestador = documento ?? string.Empty,
+            ChaveReferencia = chave,
+            NomeArquivo = nomeArquivo,
+            DataDocumento = data,
+            TipoDocumentoFiscal = tipoDoc,
+            Ambiente = Configuracao.WebServices.Ambiente,
+            TipoEvento = evento,
+            NumeroSequencial = seq
+        };
+    }
 
-            var nomeFinal = !incrementarNome ? GerarNomeUnico(caminhoRelativo, nomeArquivo, motorNuvem) : nomeArquivo;
-            var caminhoAbsolutoFinal = Path.Combine(diretorioAbsoluto, nomeFinal);
-
-            motorNuvem.Salvar(caminhoRelativo, nomeFinal, conteudoArquivo);
-
-            if (Configuracao.Arquivos.Indexador.ManterCopiaLocal && IndexadorDocs.PossuiStorageCustomizado)
-            {
-                if (!Directory.Exists(diretorioAbsoluto)) Directory.CreateDirectory(diretorioAbsoluto);
-                File.WriteAllText(caminhoAbsolutoFinal, conteudoArquivo, Encoding.UTF8);
-            }
-
-            referenciaDoc.CaminhoRelativo = caminhoRelativo;
-            referenciaDoc.NomeArquivo = nomeFinal;
-            var docSalvo = IndexadorDocs.Indexar(referenciaDoc);
-
-            return (caminhoAbsolutoFinal, docSalvo?.Id);
-        }
-        else
+    /// <summary>
+    /// Grava o arquivo no disco conforme o tipo especificado.
+    /// </summary>
+    /// <param name="diretorioAbsoluto">Diretório absoluto onde o arquivo foi salvo.</param>
+    /// <param name="conteudoArquivo">Conteúdo do arquivo.</param>
+    /// <param name="nomeArquivo">Nome do arquivo.</param>
+    /// <param name="incrementarNome">
+    /// <param name="referenciaDoc">Representa o registo de um documento no índice do indexador.</param>
+    /// Indica se o nome do arquivo deve ser incrementado caso já exista,
+    /// adicionando um sufixo numérico (_1, _2, etc.) para evitar sobrescrita.
+    /// </param>
+    protected virtual void IndexarArquivo(string diretorioAbsoluto, string conteudoArquivo, string nomeArquivo, ReferenciaDocumento referenciaDoc, bool incrementarNome = false)
+    {
+        bool permiteIndexar = referenciaDoc.TipoDocumentoFiscal switch
         {
-            var caminhoFinal = !incrementarNome ? GerarPathUnicoLocal(diretorioAbsoluto, nomeArquivo) : Path.Combine(diretorioAbsoluto, nomeArquivo);
+            TipoRegistroDocumento.DPS => Configuracao.Arquivos.Indexador.IndexacaoAutomatica.IndexarDps,
+            TipoRegistroDocumento.PEDIDO_REGISTRO_EVENTO => Configuracao.Arquivos.Indexador.IndexacaoAutomatica.IndexarPedidoEvento,
+            TipoRegistroDocumento.NFSE => Configuracao.Arquivos.Indexador.IndexacaoAutomatica.IndexarNFSe,
+            TipoRegistroDocumento.EVENTO => Configuracao.Arquivos.Indexador.IndexacaoAutomatica.IndexarEvento,
+            _ => false
+        };
 
+        if (!permiteIndexar) return;
+
+        var caminhoRelativo = GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorioAbsoluto);
+        var motorNuvem = IndexadorDocs.Storage;
+
+        var nomeFinal = incrementarNome ? GerarNomeUnico(caminhoRelativo, nomeArquivo, motorNuvem) : nomeArquivo;
+        var caminhoAbsolutoFinal = Path.Combine(diretorioAbsoluto, nomeFinal);
+
+        motorNuvem.Salvar(caminhoRelativo, nomeFinal, conteudoArquivo);
+
+        if (Configuracao.Arquivos.Indexador.GarantirCopiaLocal && IndexadorDocs.PossuiStorageCustomizado)
+        {
             if (!Directory.Exists(diretorioAbsoluto)) Directory.CreateDirectory(diretorioAbsoluto);
-            File.WriteAllText(caminhoFinal, conteudoArquivo, Encoding.UTF8);
-            return (caminhoFinal, null);
+            File.WriteAllText(caminhoAbsolutoFinal, conteudoArquivo, Encoding.UTF8);
+        }
+
+        referenciaDoc.CaminhoRelativo = caminhoRelativo;
+        referenciaDoc.NomeArquivo = nomeFinal;
+        
+        var docSalvo = IndexadorDocs.Indexar(referenciaDoc);
+        if (docSalvo != null)
+        {
+            referenciaDoc.Id = docSalvo.Id;
         }
     }
 
-    //protected virtual (string? caminhoCompletoArquivo, int? documentoIndexadoId) GravarArquivoEmDisco(TipoArquivo tipo, string conteudoArquivo, string nomeArquivo, string? documento, DateTime? data = null, bool incrementarNome = false, DocumentoIndexado docIndexado = null)
-    //{
-    //    var diretorio = tipo switch
-    //    {
-    //        TipoArquivo.Webservice => Path.Combine(Configuracao.Arquivos.GetPathEnvio(data ?? DateTime.Today, documento ?? string.Empty)),
-    //        TipoArquivo.Rps => Path.Combine(Configuracao.Arquivos.GetPathDps(data ?? DateTime.Today, documento ?? string.Empty)),
-    //        TipoArquivo.NFSe => Path.Combine(Configuracao.Arquivos.GetPathNFSe(data ?? DateTime.Today, documento ?? string.Empty)),
-    //        _ => throw new ArgumentOutOfRangeException(nameof(tipo), tipo, null)
-    //    };
-
-    //    var caminhoFinal = !incrementarNome ? GerarPathUnico(diretorio, nomeArquivo) : Path.Combine(diretorio, nomeArquivo);
-
-    //    File.WriteAllText(caminhoFinal, conteudoArquivo, Encoding.UTF8);
-
-    //    if (!Configuracao.Arquivos.IndexarDocumentosSalvos || docIndexado == null || tipo is not (TipoArquivo.NFSe or TipoArquivo.Rps))
-    //        return (caminhoFinal, null);
-
-    //    //arquivoIndex.CaminhoRelativo = diretorio;
-    //    docIndexado.CaminhoRelativo = GetRelativePath(Configuracao.Arquivos.PathSalvar, diretorio);
-    //    return (caminhoFinal, IndexadorDocs.Indexar(docIndexado)?.Id);
-    //}
-
+    /// <summary>
+    /// Gera um nome de arquivo único para um provedor de armazenamento, adicionando um sufixo numérico (ex: _1, _2) caso o arquivo já exista.
+    /// </summary>
+    /// <param name="caminhoRelativo">O caminho relativo ou diretório alvo no provedor.</param>
+    /// <param name="nomeArquivo">O nome original do arquivo com sua extensão.</param>
+    /// <param name="motor">O provedor de armazenamento (<see cref="IStorageProvider"/>) responsável por verificar se o arquivo já existe.</param>
+    /// <returns>Um nome de arquivo único, preservando a extensão original.</returns>
     private string GerarNomeUnico(string caminhoRelativo, string nomeArquivo, IStorageProvider motor)
     {
         if (!motor.Existe(caminhoRelativo, nomeArquivo)) return nomeArquivo;
@@ -363,6 +561,12 @@ public abstract class NFSeWebserviceBase : IOpenLog
         return novoNome;
     }
 
+    /// <summary>
+    /// Gera um caminho físico local único, adicionando um sufixo numérico (ex: _1, _2) ao nome do arquivo caso ele já exista no diretório especificado.
+    /// </summary>
+    /// <param name="diretorio">O caminho do diretório local onde o arquivo será salvo.</param>
+    /// <param name="nomeArquivo">O nome original do arquivo com sua extensão.</param>
+    /// <returns>O caminho completo e único para o arquivo no sistema de arquivos local.</returns>
     private static string GerarPathUnicoLocal(string diretorio, string nomeArquivo)
     {
         var caminho = Path.Combine(diretorio, nomeArquivo);
@@ -380,10 +584,31 @@ public abstract class NFSeWebserviceBase : IOpenLog
     }
 
     /// <summary>
-    /// Verifica se o arquivo já existe antes de escrever, e incrementa um sufixo numérico caso exista.
+    /// Calcula o caminho relativo entre um diretório base absoluto e um caminho de destino absoluto.
+    /// </summary>
+    /// <param name="relativeTo">O caminho absoluto que servirá como base (ponto de partida).</param>
+    /// <param name="path">O caminho absoluto de destino.</param>
+    /// <returns>Uma string representando o caminho relativo do diretório base até o destino.</returns>
+    private static string GetRelativePath(string relativeTo, string path)
+    {
+        var root = relativeTo.EndsWith(Path.DirectorySeparatorChar.ToString())
+                   ? relativeTo : relativeTo + Path.DirectorySeparatorChar;
+
+        Uri rootUri = new Uri(root);
+        Uri fullUri = new Uri(path);
+
+        Uri relativeUri = rootUri.MakeRelativeUri(fullUri);
+
+        return Uri.UnescapeDataString(relativeUri.ToString())
+                  .Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    /// <summary>
+    /// Verifica se o arquivo já existe antes de escrever, e incrementa um sufixo numérico (ex: _1, _2) caso exista, gerando um caminho único.
     /// </summary>
     /// <param name="diretorio">Diretório onde o arquivo será salvo.</param>
-    /// <param name="nomeArquivo">Nome do arquivo.</param>
+    /// <param name="nomeArquivo">Nome original do arquivo com sua extensão.</param>
+    /// <returns>O caminho completo e único para o arquivo no sistema de arquivos local.</returns>
     private static string GerarPathUnico(string diretorio, string nomeArquivo)
     {
         var caminho = Path.Combine(diretorio, nomeArquivo);
@@ -403,20 +628,6 @@ public abstract class NFSeWebserviceBase : IOpenLog
         while (File.Exists(caminho));
 
         return caminho;
-    }
-
-    private static string GetRelativePath(string relativeTo, string path)
-    {
-        var root = relativeTo.EndsWith(Path.DirectorySeparatorChar.ToString())
-                   ? relativeTo : relativeTo + Path.DirectorySeparatorChar;
-
-        Uri rootUri = new Uri(root);
-        Uri fullUri = new Uri(path);
-
-        Uri relativeUri = rootUri.MakeRelativeUri(fullUri);
-
-        return Uri.UnescapeDataString(relativeUri.ToString())
-                  .Replace('/', Path.DirectorySeparatorChar);
     }
 
     #endregion Methods

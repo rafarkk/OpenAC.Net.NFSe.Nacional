@@ -1,4 +1,5 @@
-﻿using OpenAC.Net.NFSe.Nacional.Common.Types;
+﻿using OpenAC.Net.DFe.Core.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,7 +58,12 @@ namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
         /// <summary>
         /// Filtra pelo tipo específico de documento (ex: apenas NFSe).
         /// </summary>
-        public TipoDocumento? TipoDocumentoFiscal { get; set; }
+        public TipoRegistroDocumento? TipoDocumentoFiscal { get; set; }
+
+        /// <summary>
+        /// Ambiente em que a operação foi realizada e o documento foi gerado.
+        /// </summary>
+        public DFeTipoAmbiente? Ambiente { get; set; }
 
         /// <summary>
         /// Filtra por um evento específico (ex: apenas documentos cancelados).

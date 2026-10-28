@@ -32,6 +32,7 @@
 using OpenAC.Net.Core.Logging;
 using OpenAC.Net.NFSe.Nacional.Common;
 using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Danfse;
 using OpenAC.Net.NFSe.Nacional.Indexador.StorageProvider;
 using OpenAC.Net.NFSe.Nacional.Webservice;
 using System;
@@ -53,7 +54,7 @@ public sealed class OpenNFSeNacional : IOpenLog
     public ConfiguracaoNFSe Configuracoes { get; } = new();
 
     /// <summary>
-    /// Instância do serviço de índice utilizada para catalogar os arquivos gerados e resolver seus caminhos físicos de armazenamento.
+    /// Serviço de índice utilizada para catalogar os arquivos gerados e resolver seus caminhos físicos de armazenamento.
     /// </summary>
     public IndexadorDocumentos IndexadorDocs { get; }
 
@@ -63,14 +64,21 @@ public sealed class OpenNFSeNacional : IOpenLog
     /// </summary>
     public IStorageProvider? Storage { get; }
 
+    /// <summary>
+    /// Provedor responsável pela geração do DANFSE em PDF.
+    /// </summary>
+    public INFSeDanfseProvider GeradorPdf { get; }
+
     #endregion Properties
 
     #region Constructors
-    /// <param name="stocustomStoragerage">Provedor de armazenamento customizado opcional.</param>
-    public OpenNFSeNacional(IStorageProvider? customStorage = null)
+    /// <param name="customStorage">Provedor de armazenamento customizado opcional.</param>
+    /// <param name="geradorPdf">Provedor de geração de PDF customizado. Caso não informado utlizará provider o padrão.</param>
+    public OpenNFSeNacional(IStorageProvider? customStorage = null, INFSeDanfseProvider? geradorPdf = null)
     {
         Storage = customStorage;
-        IndexadorDocs = new IndexadorDocumentos(Configuracoes.Arquivos, customStorage);
+        GeradorPdf = geradorPdf ?? NFSeDanfseFactory.Create();
+        IndexadorDocs = new IndexadorDocumentos(Configuracoes.Arquivos, customStorage, GeradorPdf);
     }
     #endregion Constructors
 

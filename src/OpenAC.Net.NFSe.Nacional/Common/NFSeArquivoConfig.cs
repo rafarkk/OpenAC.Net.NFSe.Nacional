@@ -30,11 +30,11 @@
 // ***********************************************************************
 
 using OpenAC.Net.DFe.Core.Common;
+using OpenAC.Net.DFe.Core.Extensions;
 using OpenAC.Net.NFSe.Nacional.Common.Types;
 using System;
 using System.IO;
 using System.Reflection;
-using OpenAC.Net.DFe.Core.Extensions;
 
 namespace OpenAC.Net.NFSe.Nacional.Common;
 
@@ -45,7 +45,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
 {
     /// <summary>
     /// Configurações do indexador de documentos.
-    /// Utilizado quando <c>IndexarDocumentosSalvos</c> estiver habilitado.
+    /// Utilizado quando <c>IndexarAutomaticamente</c> estiver habilitado.
     /// </summary>
     public class IndexadorConfig
     {
@@ -56,7 +56,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
         public string PathIndexadorDb { get; set; }
 
         /// <summary>
-        /// Quando habilitado, mantém uma cópia do documento em disco local,
+        /// Quando habilitado, mantém uma cópia não indexada do documento em disco local,
         /// mesmo com storage provider remoto (ex: S3).
         /// 
         /// A cópia local não é indexada quando há um storage provider customizado.
@@ -67,7 +67,48 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
         /// - Com storage provider customizado (S3): arquivo enviado ao S3 é indexado e a cópia local não é indexada.
         /// - Sem storage provider customizado (provider local padrão): arquivo é salvo localmente e indexado normalmente.
         /// </summary>
-        public bool ManterCopiaLocal { get; set; }
+        public bool GarantirCopiaLocal { get; set; }
+
+        /// <summary>
+        /// Configurações do indexador de documentos.
+        /// Utilizado quando <c>IndexarAutomaticamente</c> estiver habilitado.
+        /// </summary>
+        public IndexacaoAutomaticaConfig IndexacaoAutomatica { get; set; }
+
+        public class IndexacaoAutomaticaConfig
+        {
+            public IndexacaoAutomaticaConfig()
+            {
+                IndexarDps = true;
+                IndexarPedidoEvento = true;
+                IndexarNFSe = true;
+                IndexarEvento = true;
+            }
+
+            /// <summary>
+            /// Define se os Documentos de Prestação de Serviço (DPS) devem ser indexados automaticamente.
+            /// Padrão: true.
+            /// </summary>
+            public bool IndexarDps { get; set; }
+
+            /// <summary>
+            /// Define se os Pedidos de Registro de Evento devem ser indexados automaticamente.
+            /// Padrão: true.
+            /// </summary>
+            public bool IndexarPedidoEvento { get; set; }
+
+            /// <summary>
+            /// Define se as Notas Fiscais de Serviço Eletrônicas (NFS-e) devem ser indexadas automaticamente.
+            /// Padrão: true.
+            /// </summary>
+            public bool IndexarNFSe { get; set; }
+
+            /// <summary>
+            /// Define se os Eventos aprovados retornados pela SEFAZ devem ser indexados automaticamente.
+            /// Padrão: true.
+            /// </summary>
+            public bool IndexarEvento { get; set; }
+        }
 
         public IndexadorConfig()
         {
@@ -81,7 +122,8 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
                 PathIndexadorDb = string.Empty;
             }
 
-            ManterCopiaLocal = true;
+            GarantirCopiaLocal = true;
+            IndexacaoAutomatica = new();
         }
     }
 
@@ -106,7 +148,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
             PathDps = string.Empty;
         }
 
-        UsarIndexadorDocumentos = false;
+        IndexarAutomaticamente = false;
         Indexador = new();
     }
 
@@ -133,18 +175,18 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
     public string PathDps { get; set; }
 
     /// <summary>
-    /// Define se deve utilizar o indexador de documentos.
-    /// Quando habilitado, cria/atualiza um banco SQLite com índice dos documentos salvos.
+    /// Habilita a indexação automática dos documentos gerados.
+    /// Quando habilitado, os metadados e os caminhos físicos dos arquivos são registrados no banco SQLite do Indexador no momento em que são salvos.
     /// Requer <c>Configuracoes.Arquivos.Salvar = true</c> (necessário para persistir os arquivos).
     /// </summary>
-    public bool UsarIndexadorDocumentos { get; set; }
+    public bool IndexarAutomaticamente { get; set; }
 
     /// <summary>
     /// Obtém ou define a Versão do Schema.
     /// </summary>
     /// <value>A versão </value>
     public VersaoNFSe VersaoSchema { get; set; } = VersaoNFSe.Ve100;
-    
+
     /// <summary>
     /// Define se os nomes dos arquivos devem ser padronizados,
     /// utilizando a chave da NFSe, Id do DPS ou NSU, conforme o tipo de operação.
@@ -155,7 +197,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
 
     /// <summary>
     /// Configurações do indexador de documentos.
-    /// Utilizado quando <c>IndexarDocumentosSalvos</c> estiver habilitado.
+    /// Utilizado quando <c>IndexarAutomaticamente</c> estiver habilitado.
     /// </summary>
     public IndexadorConfig Indexador { get; set; }
 
@@ -210,7 +252,7 @@ public sealed class NFSeArquivoConfig : DFeArquivosConfigBase<SchemaNFSe>
         var dfeVersion = VersaoSchema.GetDFeValue();
         return schema switch
         {
-            SchemaNFSe.DPS => Path.Combine(PathSchemas, $"DPS_v{dfeVersion}.xsd") ,
+            SchemaNFSe.DPS => Path.Combine(PathSchemas, $"DPS_v{dfeVersion}.xsd"),
             SchemaNFSe.Evento => Path.Combine(PathSchemas, $"pedRegEvento_v{dfeVersion}.xsd"),
             _ => throw new ArgumentOutOfRangeException(nameof(schema), schema, null)
         };

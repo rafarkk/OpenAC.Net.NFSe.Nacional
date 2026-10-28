@@ -1,112 +1,129 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFrameworks>net462;net48;netstandard2.0;net8.0;net9.0;net10.0</TargetFrameworks>
-        <LangVersion>latest</LangVersion>
-        <AssemblyName>OpenAC.Net.NFSe.Nacional</AssemblyName>
-        <RootNamespace>OpenAC.Net.NFSe.Nacional</RootNamespace>
-        <SignAssembly>true</SignAssembly>
-        <AssemblyOriginatorKeyFile>OpenAC.snk</AssemblyOriginatorKeyFile>
-        <Copyright>Copyright © Projeto OpenAC .Net 2014 - 2025</Copyright>
-        <Company>OpenAC .Net - Automação Comercial em .Net</Company>
-        <Authors>Projeto OpenAC .Net</Authors>
-        <PackageProjectUrl>https://openac.net.br/</PackageProjectUrl>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <PackageIcon>nuget.png</PackageIcon>
-        <RepositoryUrl>https://github.com/OpenAC-Net/OpenAC.Net.NFSe.Nacional</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
-        <PackageTags>OpenAC.Net NFSe Nacional OpenNFSe</PackageTags>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <NeutralLanguage>pt-BR</NeutralLanguage>
-        <AssemblyVersion>1.4.5.0</AssemblyVersion>
-        <FileVersion>1.4.5.0</FileVersion>
-        <Version>1.4.5</Version>
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
-        <DebugType>embedded</DebugType>
-        <IncludeSymbols>true</IncludeSymbols>
-        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-        <PackageId>OpenAC.Net.NFSe.Nacional</PackageId>
-        <Nullable>enable</Nullable>
-        <Description>Biblioteca para emissão e trasmissão de NFSe (Nota Fiscal de Serviço Eletrônica) Padrão Nacional.</Description>
-    </PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>net462;net48;netstandard2.0;net8.0;net9.0;net10.0</TargetFrameworks>
+		<LangVersion>latest</LangVersion>
+		<AssemblyName>OpenAC.Net.NFSe.Nacional</AssemblyName>
+		<RootNamespace>OpenAC.Net.NFSe.Nacional</RootNamespace>
+		<SignAssembly>true</SignAssembly>
+		<AssemblyOriginatorKeyFile>OpenAC.snk</AssemblyOriginatorKeyFile>
+		<Copyright>Copyright © Projeto OpenAC .Net 2014 - 2025</Copyright>
+		<Company>OpenAC .Net - Automação Comercial em .Net</Company>
+		<Authors>Projeto OpenAC .Net</Authors>
+		<PackageProjectUrl>https://openac.net.br/</PackageProjectUrl>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PackageIcon>nuget.png</PackageIcon>
+		<RepositoryUrl>https://github.com/OpenAC-Net/OpenAC.Net.NFSe.Nacional</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageTags>OpenAC.Net NFSe Nacional OpenNFSe</PackageTags>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<NeutralLanguage>pt-BR</NeutralLanguage>
+		<AssemblyVersion>1.4.5.0</AssemblyVersion>
+		<FileVersion>1.4.5.0</FileVersion>
+		<Version>1.4.5</Version>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<DebugType>embedded</DebugType>
+		<IncludeSymbols>true</IncludeSymbols>
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PackageId>OpenAC.Net.NFSe.Nacional</PackageId>
+		<Nullable>enable</Nullable>
+		<Description>Biblioteca para emissão e trasmissão de NFSe (Nota Fiscal de Serviço Eletrônica) Padrão Nacional.</Description>
+	</PropertyGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
-        <Reference Include="System.Security" />
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-        <PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
-        <PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
-    </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net462'">
+		<Reference Include="System.Security" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
+		<PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
+	</ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net470'">
-        <Reference Include="System.Security" />
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net470'">
+		<Reference Include="System.Security" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+	</ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-        <Reference Include="System.Security" />
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-        <PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
-        <PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
-    </ItemGroup>
-    
-    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-        <PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
-        <PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
-    </ItemGroup>
+	<ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+		<Reference Include="System.Security" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
+		<PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
+	</ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.25" />
+	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.ServiceModel.Http" Version="10.0.652802" />
+		<PackageReference Include="System.ServiceModel.Primitives" Version="10.0.652802" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Direction.NFSe.Danfe" Version="0.2.7" GeneratePathProperty="true" ExcludeAssets="contentfiles" />
+		<PackageReference Include="Google.Cloud.Storage.V1" Version="4.14.0" />
+		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.25" />
 		<PackageReference Include="System.IO.Compression" Version="4.3.0" />
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="OpenAC.Net.Core" Version="1.6.0" />
-        <PackageReference Include="OpenAC.Net.DFe.Core" Version="1.6.0.2" />
-        <PackageReference Include="System.Net.Http.Json" Version="10.0.1" />
-    </ItemGroup>    
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="OpenAC.Net.Core" Version="1.6.0" />
+		<PackageReference Include="OpenAC.Net.DFe.Core" Version="1.6.0.2" />
+		<PackageReference Include="System.Net.Http.Json" Version="10.0.1" />
+	</ItemGroup>
 
-    <ItemGroup>
-        <None Update="Schemas\1.00\**\*.*">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="Schemas\1.01\**\*.*">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-    </ItemGroup>
+	<ItemGroup>
+		<None Update="Schemas\1.00\**\*.*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+		<None Update="Schemas\1.01\**\*.*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
-    <!-- Itens do pacote nuget -->
-    <ItemGroup>
-        <None Include="..\..\LICENSE">
-            <Pack>True</Pack>
-            <PackagePath>/</PackagePath>
-        </None>
-        <None Include="..\..\nuget.png">
-            <Pack>True</Pack>
-            <PackagePath />
-            <Link>nuget.png</Link>
-        </None>
-        <None Include="..\..\README.md">
-            <Pack>True</Pack>
-            <PackagePath>/</PackagePath>
-        </None>
-        <None Include="Schemas\1.00\**\*.*">
-            <Pack>True</Pack>
-            <PackagePath>content\Schemas\1.00</PackagePath>
-        </None>
-        <None Include="Schemas\1.01\**\*.*">
-            <Pack>True</Pack>
-            <PackagePath>content\Schemas\1.01</PackagePath>
-        </None>
-    </ItemGroup>
+	<!-- Itens do pacote nuget -->
+	<ItemGroup>
+		<None Include="..\..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>/</PackagePath>
+		</None>
+		<None Include="..\..\nuget.png">
+			<Pack>True</Pack>
+			<PackagePath />
+			<Link>nuget.png</Link>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>/</PackagePath>
+		</None>
+		<None Include="Schemas\1.00\**\*.*">
+			<Pack>True</Pack>
+			<PackagePath>content\Schemas\1.00</PackagePath>
+		</None>
+		<None Include="Schemas\1.01\**\*.*">
+			<Pack>True</Pack>
+			<PackagePath>content\Schemas\1.01</PackagePath>
+		</None>
+	</ItemGroup>
 
-    <ItemGroup>
-      <EmbeddedResource Include="Resources\Municipios.nfse" />
-    </ItemGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\Municipios.nfse" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="$(PkgDirection_NFSe_Danfe)\contentFiles\any\any\Direction.NFSe.Danfe\Assets\**\*.*">
+			<Link>Assets\%(RecursiveDir)%(Filename)%(Extension)</Link>
+			<TargetPath>Assets\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Danfse\Factory\" />
+	</ItemGroup>
 
 </Project>

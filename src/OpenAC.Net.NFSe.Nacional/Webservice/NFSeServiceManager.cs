@@ -170,7 +170,8 @@ public sealed class NFSeServiceManager
     /// Retorna uma instância do provedor NFSe para o município nas configurações informadas.
     /// </summary>
     /// <param name="config">Configuração do NFSe (não pode ser nulo).</param>
-    /// <param name="indexadorDocs">Serviço responsável por indexar e localizar os documentos no sistema de arquivos.</param>    /// <returns>Instância de <see cref="NFSeWebserviceBase"/> correspondente ao provedor e versão.</returns>
+    /// <param name="indexadorDocs">Serviço responsável por indexar e localizar os documentos no sistema de arquivos.</param>
+    /// <returns>Instância de <see cref="NFSeWebserviceBase"/> correspondente ao provedor e versão.</returns>
     /// <exception cref="ArgumentNullException">Se <paramref name="config"/> for nulo.</exception>
     /// <exception cref="OpenException">Se o provedor ou versão não estiverem registrados ou a classe do provedor for incompatível.</exception>
     /// <exception cref="InvalidOperationException">Se a instância do provedor não puder ser criada.</exception>

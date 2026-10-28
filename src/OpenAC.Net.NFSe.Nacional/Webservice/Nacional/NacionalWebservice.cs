@@ -29,6 +29,12 @@
 // <summary></summary>
 // ***********************************************************************
 
+using OpenAC.Net.Core.Extensions;
+using OpenAC.Net.Core.Logging;
+using OpenAC.Net.NFSe.Nacional.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Model;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
+using OpenAC.Net.NFSe.Nacional.Indexador.Model;
 using System;
 using System.Linq;
 using System.Net;
@@ -37,14 +43,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using OpenAC.Net.Core.Extensions;
-using OpenAC.Net.Core.Logging;
-using OpenAC.Net.DFe.Core.Extensions;
-using OpenAC.Net.NFSe.Nacional.Common;
-using OpenAC.Net.NFSe.Nacional.Common.Model;
-using OpenAC.Net.NFSe.Nacional.Common.Types;
-using OpenAC.Net.NFSe.Nacional.Indexador;
-using OpenAC.Net.NFSe.Nacional.Indexador.Model;
 namespace OpenAC.Net.NFSe.Nacional.Webservice.Nacional;
 
 /// <summary>
@@ -208,12 +206,28 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         var documento = evento.Informacoes.CPFAutor ?? evento.Informacoes.CNPJAutor;
 
-        var prefixoNomeArquivoDps = Configuracao.Arquivos.PadronizarNomes
+        var prefixoNomeArquivoPed = Configuracao.Arquivos.PadronizarNomes
             ? evento.Informacoes.Id
-            : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
+            : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}_{DateTime.Now:yyyyMMddHHmmss}";
+        var nomeArquivoPed = $"{prefixoNomeArquivoPed}_evento.xml";
 
-        GravarDpsEmDisco(evento.Xml, $"{prefixoNomeArquivoDps}_evento.xml",
-                documento, evento.Informacoes.DhEvento.DateTime, true);
+        //var referenciaDocPre = new ReferenciaDocumento
+        //{
+        //    CriadoEm = DateTime.Now,
+        //    DocumentoPrestador = documento,
+        //    ChaveReferencia = evento.Informacoes.ChNFSe,
+        //    NomeArquivo = prefixoNomeArquivoDps,
+        //    DataDocumento = evento.Informacoes.DhEvento.DateTime,
+        //    TipoDocumentoFiscal = TipoRegistroDocumento.EVENTO,
+        //    Ambiente = Configuracao.WebServices.Ambiente,
+        //    TipoEvento = evento.Informacoes.Evento.TipoEvento,
+        //    NumeroSequencial = 0
+        //};
+
+        //GravarDpsEmDisco(evento.Xml, nomeArquivoDps, documento, evento.Informacoes.DhEvento.DateTime, false);
+
+        var refPedido = CriarReferenciaIndexacao(TipoRegistroDocumento.PEDIDO_REGISTRO_EVENTO, evento.Informacoes.ChNFSe, nomeArquivoPed, documento, evento.Informacoes.DhEvento.DateTime, evento.Informacoes.Evento.TipoEvento);
+        GravarDpsEmDisco(evento.Xml, nomeArquivoPed, documento, evento.Informacoes.DhEvento.DateTime, false, refPedido);
 
         var envio = new EventoEnvio
         {
@@ -225,7 +239,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         this.Log().Debug($"Webservice: [Evento][Envio] - {strEnvio}");
 
-        GravarArquivoEmDisco(strEnvio, $"Evento-{prefixoNomeArquivoDps}-env.json",
+        GravarArquivoEmDisco(strEnvio, $"Evento-{prefixoNomeArquivoPed}-env.json",
             documento);
 
         var url = ServiceInfo[Configuracao.WebServices.Ambiente][TipoUrl.EnviarEvento];
@@ -235,7 +249,7 @@ public class NacionalWebservice : NFSeWebserviceBase
 
         this.Log().Debug($"Webservice: [Evento][Resposta] - {strResponse}");
 
-        GravarArquivoEmDisco(strResponse, $"Evento-{prefixoNomeArquivoDps}-resp.json",
+        GravarArquivoEmDisco(strResponse, $"Evento-{prefixoNomeArquivoPed}-resp.json",
             documento);
 
         var jsonOptions = new JsonSerializerOptions
@@ -250,36 +264,58 @@ public class NacionalWebservice : NFSeWebserviceBase
         {
             try
             {
-                var prefixoNomeArquivoEventoNfse = Configuracao.Arquivos.PadronizarNomes
-                    ? evento.Informacoes.ChNFSe
-                    : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
-
                 var nSeqEvento = XDocument.Parse(retorno.Resultado.XmlEvento)
                     .Descendants()
                     .FirstOrDefault(x => x.Name.LocalName == "nSeqEvento")?.Value ?? "00";
 
-                var nomeArquivoEvento = $"{prefixoNomeArquivoEventoNfse}_evento_{nSeqEvento}.xml";
+                int nSeqNum = int.TryParse(nSeqEvento, out var seq) ? seq : 0;
 
-                var referenciaDoc = new ReferenciaDocumento
+                if (Configuracao.Arquivos.IndexarAutomaticamente && refPedido != null && refPedido.Id > 0 && nSeqNum > 0)
                 {
-                    CriadoEm = DateTime.Now,
-                    DocumentoPrestador = documento,
-                    ChaveReferencia = evento.Informacoes.ChNFSe,
-                    NomeArquivo = nomeArquivoEvento,
-                    DataDocumento = evento.Informacoes.DhEvento.DateTime,
-                    TipoDocumentoFiscal = TipoDocumento.EVENTO,
-                    TipoEvento = evento.Informacoes.Evento.TipoEvento,
-                    NumeroSequencial = int.TryParse(nSeqEvento, out var numero)
-                        ? numero
-                        : (int?)null
-                };
+                    var docAtualizado = IndexadorDocs.AtualizarCampo(refPedido.Id, "numero_sequencial", nSeqNum);
 
-                GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEvento, documento, evento.Informacoes.DhEvento.DateTime, true, referenciaDoc);
+                    if (docAtualizado == null)
+                    {
+                        this.Log().Warn($"Webservice: [DANFSe] - Erro ao atualizar campo de arquivo em disco.");
+                    }
+                }
+
+                var prefixoNomeArquivoEventoNfse = Configuracao.Arquivos.PadronizarNomes
+                    ? evento.Informacoes.ChNFSe
+                    : $"{evento.Informacoes.ChNFSe}{evento.Informacoes.Evento}";
+
+                var nomeArquivoEventoFinal = $"{prefixoNomeArquivoEventoNfse}_evento_{nSeqEvento}.xml";
+                
+
+                //var referenciaDoc = new ReferenciaDocumento
+                //{
+                //    CriadoEm = DateTime.Now,
+                //    DocumentoPrestador = documento,
+                //    ChaveReferencia = evento.Informacoes.ChNFSe,
+                //    NomeArquivo = nomeArquivoEvento,
+                //    DataDocumento = evento.Informacoes.DhEvento.DateTime,
+                //    TipoDocumentoFiscal = TipoRegistroDocumento.EVENTO,
+                //    Ambiente = Configuracao.WebServices.Ambiente,
+                //    TipoEvento = evento.Informacoes.Evento.TipoEvento,
+                //    NumeroSequencial = int.TryParse(nSeqEvento, out var numero)
+                //        ? numero
+                //        : (int?)null
+                //};
+
+                //GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEvento, documento, evento.Informacoes.DhEvento.DateTime, true, referenciaDoc);
+
+                var refEventoFinal = CriarReferenciaIndexacao(TipoRegistroDocumento.EVENTO, evento.Informacoes.ChNFSe, nomeArquivoEventoFinal, documento, evento.Informacoes.DhEvento.DateTime, evento.Informacoes.Evento.TipoEvento, nSeqNum);
+                GravarNFSeEmDisco(retorno.Resultado.XmlEvento, nomeArquivoEventoFinal, documento, evento.Informacoes.DhEvento.DateTime, true, refEventoFinal);
             }
             catch (Exception)
             {
                 this.Log().Warn($"Webservice: [Evento] - Erro ao salvar arquivo em disco.");
             }
+        }
+        else
+        {
+            if (refPedido != null && refPedido.Id > 0)
+                IndexadorDocs.Remover(refPedido.Id);
         }
 
         return retorno;
@@ -307,17 +343,19 @@ public class NacionalWebservice : NFSeWebserviceBase
             : dps.Informacoes.NumeroDps.ZeroFill(6);
 
         var nomeArquivoDps = $"{prefixoNomeArquivoDps}_dps.xml";
-        var referenciaDocDps = new ReferenciaDocumento
-        {
-            CriadoEm = DateTime.Now,
-            DocumentoPrestador = documento,
-            ChaveReferencia = dps.Informacoes.Id,
-            NomeArquivo = nomeArquivoDps,
-            DataDocumento = dps.Informacoes.DhEmissao.DateTime,
-            TipoDocumentoFiscal = TipoDocumento.DPS,
-        };
+        //var referenciaDocDps = new ReferenciaDocumento
+        //{
+        //    CriadoEm = DateTime.Now,
+        //    DocumentoPrestador = documento,
+        //    ChaveReferencia = dps.Informacoes.Id,
+        //    NomeArquivo = nomeArquivoDps,
+        //    DataDocumento = dps.Informacoes.DhEmissao.DateTime,
+        //    TipoDocumentoFiscal = TipoRegistroDocumento.DPS,
+        //    Ambiente = Configuracao.WebServices.Ambiente
+        //};
 
-        var (caminhoDps, idDocIndexado) = GravarDpsEmDisco(dps.Xml, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime, referenciaDoc: referenciaDocDps);
+        var refDps = CriarReferenciaIndexacao(TipoRegistroDocumento.DPS, dps.Informacoes.Id, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime);
+        GravarDpsEmDisco(dps.Xml, nomeArquivoDps, documento, dps.Informacoes.DhEmissao.DateTime, false, refDps);
 
         var envio = new DpsEnvio
         {
@@ -348,11 +386,11 @@ public class NacionalWebservice : NFSeWebserviceBase
             {
                 var chaveAcesso = retorno.Resultado?.ChaveAcesso;
 
-                if (idDocIndexado.HasValue)
+                if (Configuracao.Arquivos.IndexarAutomaticamente && refDps != null && refDps.Id > 0 && !string.IsNullOrWhiteSpace(chaveAcesso))
                 {
-                    var docAtualizado = IndexadorDocs.AtualizarCampo(idDocIndexado.Value, "chave_referencia", chaveAcesso);
+                    var docAtualizado = IndexadorDocs.AtualizarCampo(refDps.Id, "chave_referencia", chaveAcesso);
 
-                    if (Configuracao.Arquivos.UsarIndexadorDocumentos && docAtualizado == null)
+                    if (docAtualizado == null)
                     {
                         this.Log().Warn($"Webservice: [DANFSe] - Erro ao atualizar campo de arquivo em disco.");
                     }
@@ -362,18 +400,21 @@ public class NacionalWebservice : NFSeWebserviceBase
                     ? retorno?.Resultado?.ChaveAcesso
                     : dps.Informacoes.NumeroDps.ZeroFill(6))}_nfse.xml";
 
-                var referenciaDocNfse = new ReferenciaDocumento
-                {
-                    CriadoEm = DateTime.Now,
-                    DocumentoPrestador = documento,
-                    ChaveReferencia = chaveAcesso,
-                    NomeArquivo = nomeArquivoNfse,
-                    DataDocumento = dps.Informacoes.DhEmissao.DateTime,
-                    TipoDocumentoFiscal = TipoDocumento.NFSE,
-                };
+                var refNfse = CriarReferenciaIndexacao(TipoRegistroDocumento.NFSE, chaveAcesso, $"{nomeArquivoNfse}_nfse.xml", documento, dps.Informacoes.DhEmissao.DateTime);
+
+                //var referenciaDocNfse = new ReferenciaDocumento
+                //{
+                //    CriadoEm = DateTime.Now,
+                //    DocumentoPrestador = documento,
+                //    ChaveReferencia = chaveAcesso,
+                //    NomeArquivo = nomeArquivoNfse,
+                //    DataDocumento = dps.Informacoes.DhEmissao.DateTime,
+                //    TipoDocumentoFiscal = TipoRegistroDocumento.NFSE,
+                //    Ambiente = Configuracao.WebServices.Ambiente
+                //};
 
 
-                GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, nomeArquivoNfse, documento, dps.Informacoes.DhEmissao.DateTime, referenciaDoc: referenciaDocNfse);
+                GravarNFSeEmDisco(retorno.Resultado.XmlNFSe, nomeArquivoNfse, documento, dps.Informacoes.DhEmissao.DateTime, true, refNfse);
             }
             catch (Exception)
             {
@@ -382,7 +423,8 @@ public class NacionalWebservice : NFSeWebserviceBase
         }
         else
         {
-            if (idDocIndexado.HasValue) IndexadorDocs.Remover(idDocIndexado.Value);
+            if (refDps != null && refDps.Id > 0)
+                IndexadorDocs.Remover(refDps.Id);
         }
 
         return retorno;

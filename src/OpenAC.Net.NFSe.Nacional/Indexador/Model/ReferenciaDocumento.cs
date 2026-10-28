@@ -1,12 +1,40 @@
-﻿using OpenAC.Net.NFSe.Nacional.Common.Types;
+﻿using OpenAC.Net.DFe.Core.Common;
+using OpenAC.Net.NFSe.Nacional.Common.Types;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
 {
+    /// <summary>
+    /// Define o tipo do documento registrado.
+    /// </summary>
+    public enum TipoRegistroDocumento
+    {
+        /// <summary>
+        /// Documento de Prestação de Serviço (DPS).
+        /// </summary>
+        DPS,
+
+        /// <summary>
+        /// Pedido de Registro de Evento.
+        /// </summary>
+        PEDIDO_REGISTRO_EVENTO,
+
+        /// <summary>
+        /// Nota Fiscal de Serviço Eletrônica (NFS-e).
+        /// </summary>
+        NFSE,
+
+        /// <summary>
+        /// Evento relacionado ao documento.
+        /// </summary>
+        EVENTO,
+
+        /// <summary>
+        /// PDF gerado a partir de um XML.
+        /// </summary>
+        PDF
+    }
+
     /// <summary>
     /// Representa o registro de um documento eletrônico (XML, JSON, etc.) no índice de localização.
     /// </summary>
@@ -51,7 +79,12 @@ namespace OpenAC.Net.NFSe.Nacional.Indexador.Model
         /// <summary>
         /// Tipo do documento (NFSe, DPS, etc.).
         /// </summary>
-        public TipoDocumento TipoDocumentoFiscal { get; set; }
+        public TipoRegistroDocumento TipoDocumentoFiscal { get; set; }
+
+        /// <summary>
+        /// Ambiente em que a operação foi realizada e o documento foi gerado.
+        /// </summary>
+        public DFeTipoAmbiente Ambiente { get; set; }
 
         /// <summary>
         /// Tipo de evento relacionado ao documento (ex: Cancelamento, Substituição), se aplicável.
